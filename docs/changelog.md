@@ -23,3 +23,7 @@
 - Добавлены документы релизных e2e-гейтов:
   - `tests/e2e-priority-matrix.md`
   - `tests/e2e-test-data-contract.md`
+- Стартована backend-реализация (phase-2 bootstrap):
+  - `backend/app/*` (auth/session API)
+  - `backend/tests/test_auth_sessions.py`
+  - `backend/README.md`

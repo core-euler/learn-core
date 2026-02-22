@@ -24,6 +24,8 @@ from .ai_schemas import LectureRequest, ExamStartRequest, ConsultantRequest
 from .ai_service import ensure_mode_access, create_ai_session
 from .usage_entities import UserUsage
 from .limits_service import check_and_increment_usage, DAILY_LIMIT
+from .rate_limit_entities import UserRateWindow
+from .minute_limit_service import check_minute_limit, MINUTE_LIMIT
 from .streaming import build_stub_stream
 import os
 import json
@@ -186,10 +188,28 @@ def _test_reset(db: Session = Depends(get_db)):
     db.query(AiMessage).delete()
     db.query(AiSession).delete()
     db.query(UserUsage).delete()
+    db.query(UserRateWindow).delete()
     db.query(DbSession).delete()
     db.query(User).delete()
     db.commit()
     return {"ok": True, "ts": datetime.now(timezone.utc).isoformat()}
+
+
+@app.post('/_test/reset-minute-window')
+def _test_reset_minute_window(access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not access_token:
+        raise HTTPException(status_code=401, detail='missing_access')
+    try:
+        token_payload = decode_access_token(access_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail='invalid_access')
+    user_id = token_payload.get('user_id')
+    rw = db.execute(select(UserRateWindow).where(UserRateWindow.user_id == user_id)).scalar_one_or_none()
+    if rw:
+        rw.requests_in_window = 0
+        rw.window_start_epoch = 0
+        db.commit()
+    return {'ok': True}
 
 
 @app.post('/_test/seed-course')
@@ -355,6 +375,9 @@ def chat_lecture(payload: LectureRequest, request: Request, access_token: str | 
     allowed, err = check_and_increment_usage(db, user_id)
     if not allowed:
         raise HTTPException(status_code=429, detail=err)
+    minute_ok, minute_err = check_minute_limit(db, user_id)
+    if not minute_ok:
+        raise HTTPException(status_code=429, detail=minute_err)
 
     ok, err = ensure_mode_access(db, user_id, 'lecture', payload.lesson_id)
     if not ok:
@@ -366,7 +389,8 @@ def chat_lecture(payload: LectureRequest, request: Request, access_token: str | 
     db.commit()
 
     if 'text/event-stream' in (request.headers.get('accept') or ''):
-        return StreamingResponse(build_stub_stream(payload.message_id, 'lecture_stub_response'), media_type='text/event-stream')
+        last_event_id = request.headers.get('last-event-id')
+        return StreamingResponse(build_stub_stream(payload.message_id, 'lecture_stub_response', last_event_id=last_event_id), media_type='text/event-stream')
 
     return {'session_id': session.id, 'reply': 'lecture_stub_response'}
 
@@ -384,6 +408,9 @@ def chat_exam_start(payload: ExamStartRequest, access_token: str | None = Cookie
     allowed, err = check_and_increment_usage(db, user_id)
     if not allowed:
         raise HTTPException(status_code=429, detail=err)
+    minute_ok, minute_err = check_minute_limit(db, user_id)
+    if not minute_ok:
+        raise HTTPException(status_code=429, detail=minute_err)
 
     ok, err = ensure_mode_access(db, user_id, 'exam', payload.lesson_id)
     if not ok:
@@ -499,6 +526,9 @@ def chat_consultant(payload: ConsultantRequest, access_token: str | None = Cooki
     allowed, err = check_and_increment_usage(db, user_id)
     if not allowed:
         raise HTTPException(status_code=429, detail=err)
+    minute_ok, minute_err = check_minute_limit(db, user_id)
+    if not minute_ok:
+        raise HTTPException(status_code=429, detail=minute_err)
 
     ok, err = ensure_mode_access(db, user_id, 'consultant', None)
     if not ok:

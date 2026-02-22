@@ -52,3 +52,4 @@
   - `user_usage` и базовый дневной лимит на chat endpoint-ы,
   - usage в `progress/stats`.
 - Добавлен базовый SSE stream контракт для `chat/lecture` (`chunk` + `done`).
+- Добавлен минутный rate-limit и базовый reconnect-дедуп по `Last-Event-ID`.

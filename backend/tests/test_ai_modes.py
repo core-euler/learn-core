@@ -128,6 +128,18 @@ def test_lecture_sse_stream_contract():
     assert '"type": "chunk"' in body
     assert '"type": "done"' in body
 
+    # reconnect with last-event-id should avoid chunk re-send for same message_id
+    r2 = client.post('/api/chat/lecture', cookies={'access_token': access}, headers={'accept': 'text/event-stream', 'last-event-id': 'stream-1'}, json={
+        'lesson_id': lesson_id,
+        'session_id': None,
+        'message': 'hello stream',
+        'message_id': 'stream-1'
+    })
+    assert r2.status_code == 200
+    body2 = r2.text
+    assert '"type": "chunk"' not in body2
+    assert '"type": "done"' in body2
+
 
 def test_daily_limit_enforced_on_chat_requests():
     access = setup_user()
@@ -139,7 +151,18 @@ def test_daily_limit_enforced_on_chat_requests():
     finally:
         db.close()
 
-    for i in range(30):
+    for i in range(20):
+        r = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
+            'lesson_id': lesson_id,
+            'session_id': None,
+            'message': f'hello {i}',
+            'message_id': f'm{i}'
+        })
+        assert r.status_code == 200
+
+    client.post('/_test/reset-minute-window', cookies={'access_token': access})
+
+    for i in range(20, 30):
         r = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
             'lesson_id': lesson_id,
             'session_id': None,
@@ -155,3 +178,33 @@ def test_daily_limit_enforced_on_chat_requests():
         'message_id': 'm-over'
     })
     assert blocked.status_code == 429
+    assert blocked.json()['detail'] == 'daily_limit_exceeded'
+
+
+def test_minute_limit_enforced_before_daily_limit():
+    access = setup_user()
+
+    db = SessionLocal()
+    try:
+        available = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalar_one()
+        lesson_id = available.lesson_id
+    finally:
+        db.close()
+
+    for i in range(20):
+        r = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
+            'lesson_id': lesson_id,
+            'session_id': None,
+            'message': f'minute {i}',
+            'message_id': f'min-{i}'
+        })
+        assert r.status_code == 200
+
+    blocked = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
+        'lesson_id': lesson_id,
+        'session_id': None,
+        'message': 'minute over',
+        'message_id': 'min-over'
+    })
+    assert blocked.status_code == 429
+    assert blocked.json()['detail'] == 'minute_rate_limited'

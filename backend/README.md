@@ -19,6 +19,8 @@
 - Расширен AI API: exam finish, sessions history.
 - Начат phase-5: базовые usage лимиты для chat endpoint-ов.
 - Добавлен базовый SSE ответ для lecture режима (event-stream).
+- Добавлены дневной + минутный лимиты для chat endpoint-ов.
+- Добавлена базовая reconnect-дедуп логика по `Last-Event-ID`.
 
 ## Запуск тестов
 ```bash

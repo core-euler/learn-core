@@ -5,16 +5,19 @@
 
 ## Что реализовано
 - Добавлен `user_usage` persistence слой.
-- Введён базовый дневной лимит запросов для chat endpoint-ов (`daily_limit_exceeded`).
+- Введён дневной лимит запросов для chat endpoint-ов (`daily_limit_exceeded`).
+- Введён минутный лимит (`minute_rate_limited`).
 - Usage-метрики подключены к `GET /api/progress/stats`.
-- Добавлен базовый SSE-контракт для `POST /api/chat/lecture` при `Accept: text/event-stream`:
+- Добавлен SSE-контракт для `POST /api/chat/lecture` при `Accept: text/event-stream`:
   - события `chunk`
   - событие `done`
+- Добавлена базовая reconnect-логика по `Last-Event-ID`: если `Last-Event-ID == message_id`, chunk-переотправка не выполняется.
 
 ## Тесты
-- Покрыт сценарий лимита в `test_ai_modes.py`.
-- Покрыт базовый SSE-контракт `lecture` в `test_ai_modes.py`.
+- Покрыты сценарии дневного и минутного лимитов в `test_ai_modes.py`.
+- Покрыт SSE-контракт `lecture` и reconnect-поведение в `test_ai_modes.py`.
+- Общий прогон: 18 passed.
 
 ## Ограничения
-- Minute-rate limit пока не реализован.
-- Reconnect/Last-Event-ID дедуп протокол пока не реализован (следующий инкремент).
+- SSE дедуп сейчас минимальный (по равенству `Last-Event-ID` и `message_id`), без полноценных event offsets.
+- В production потребуется убрать/закрыть test-only endpoint `_test/reset-minute-window`.

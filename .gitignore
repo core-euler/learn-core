@@ -7,3 +7,4 @@ node_modules/
 .venv/
 .pytest_cache/
 backend_dev.db
+backend_dev.db

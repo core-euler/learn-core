@@ -18,8 +18,9 @@
   - `backend/tests/test_course_content.py`
 
 ## Тесты
-- Общий прогон: 12 passed.
+- Общий прогон: 13 passed.
 
 ## Ограничения
 - Контент/модули пока seed-ятся тестовым endpoint-ом `_test/seed-course`.
-- Структура ответа `/api/progress` пока упрощённая, будет доведена до полного контракта spec.
+- `GET /api/progress` доведён до вложенной структуры modules/lessons.
+- `GET /api/progress/stats` реализован с базовым usage stub (`total_ai_requests=0`, `requests_today=0`).

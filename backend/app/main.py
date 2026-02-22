@@ -269,13 +269,65 @@ def get_progress(access_token: str | None = Cookie(default=None), db: Session = 
         raise HTTPException(status_code=401, detail='invalid_access')
 
     user_id = payload.get('user_id')
-    modules = db.execute(select(UserModuleProgress).where(UserModuleProgress.user_id == user_id)).scalars().all()
-    lessons = db.execute(select(UserLessonProgress).where(UserLessonProgress.user_id == user_id)).scalars().all()
+    module_rows = db.execute(select(Module).where(Module.is_published == True).order_by(Module.order_index.asc())).scalars().all()
+
+    out_modules = []
+    total_lessons = 0
+    completed_lessons = 0
+
+    for m in module_rows:
+        mp = db.execute(select(UserModuleProgress).where(UserModuleProgress.user_id == user_id, UserModuleProgress.module_id == m.id)).scalar_one_or_none()
+        lesson_rows = db.execute(select(Lesson).where(Lesson.module_id == m.id, Lesson.is_published == True).order_by(Lesson.order_index.asc())).scalars().all()
+        lesson_items = []
+        for l in lesson_rows:
+            lp = db.execute(select(UserLessonProgress).where(UserLessonProgress.user_id == user_id, UserLessonProgress.lesson_id == l.id)).scalar_one_or_none()
+            if not lp:
+                continue
+            total_lessons += 1
+            if lp.status == 'completed':
+                completed_lessons += 1
+            lesson_items.append({
+                'lesson_id': l.id,
+                'status': lp.status,
+                'exam_score': lp.exam_score,
+                'exam_attempts': lp.exam_attempts,
+                'completed_at': lp.completed_at.isoformat() if lp.completed_at else None,
+            })
+
+        out_modules.append({
+            'module_id': m.id,
+            'status': mp.status if mp else 'locked',
+            'completed_at': mp.completed_at.isoformat() if mp and mp.completed_at else None,
+            'lessons': lesson_items,
+        })
+
+    overall_percent = int((completed_lessons / total_lessons) * 100) if total_lessons else 0
+    return {'overall_percent': overall_percent, 'modules': out_modules}
+
+
+@app.get('/api/progress/stats')
+def get_progress_stats(access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not access_token:
+        raise HTTPException(status_code=401, detail='missing_access')
+    try:
+        payload = decode_access_token(access_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail='invalid_access')
+    user_id = payload.get('user_id')
+
+    total_lessons = len(db.execute(select(Lesson).where(Lesson.is_published == True)).scalars().all())
+    total_modules = len(db.execute(select(Module).where(Module.is_published == True)).scalars().all())
+    completed_lessons = len(db.execute(select(UserLessonProgress).where(UserLessonProgress.user_id == user_id, UserLessonProgress.status == 'completed')).scalars().all())
+    completed_modules = len(db.execute(select(UserModuleProgress).where(UserModuleProgress.user_id == user_id, UserModuleProgress.status == 'completed')).scalars().all())
+
     return {
-        'modules_count': len(modules),
-        'lessons_count': len(lessons),
-        'module_statuses': [m.status for m in modules],
-        'lesson_statuses': [l.status for l in lessons],
+        'total_lessons': total_lessons,
+        'completed_lessons': completed_lessons,
+        'total_modules': total_modules,
+        'completed_modules': completed_modules,
+        'total_ai_requests': 0,
+        'requests_today': 0,
+        'requests_limit_today': 30,
     }
 
 

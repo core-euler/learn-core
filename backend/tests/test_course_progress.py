@@ -19,10 +19,11 @@ def test_bootstrap_progress_initial_unlocks():
     r = client.get('/api/progress', cookies={'access_token': access})
     assert r.status_code == 200
     data = r.json()
-    assert data['modules_count'] == 2
-    assert data['lessons_count'] == 3
-    assert data['module_statuses'].count('available') == 1
-    assert data['lesson_statuses'].count('available') == 1
+    assert 'overall_percent' in data
+    assert len(data['modules']) == 2
+    all_lessons = [ls for m in data['modules'] for ls in m['lessons']]
+    assert sum(1 for m in data['modules'] if m['status'] == 'available') == 1
+    assert sum(1 for l in all_lessons if l['status'] == 'available') == 1
 
 
 def test_complete_first_lesson_unlocks_next_lesson():
@@ -48,8 +49,9 @@ def test_complete_first_lesson_unlocks_next_lesson():
     r = client.get('/api/progress', cookies={'access_token': access})
     assert r.status_code == 200
     data = r.json()
-    assert data['lesson_statuses'].count('available') >= 1
-    assert data['lesson_statuses'].count('completed') >= 1
+    all_lessons = [ls for m in data['modules'] for ls in m['lessons']]
+    assert sum(1 for l in all_lessons if l['status'] == 'available') >= 1
+    assert sum(1 for l in all_lessons if l['status'] == 'completed') >= 1
 
 
 def test_cannot_complete_locked_lesson():
@@ -67,3 +69,13 @@ def test_cannot_complete_locked_lesson():
 
     c = client.post(f'/api/progress/lessons/{locked_id}/complete', cookies={'access_token': access})
     assert c.status_code == 403
+
+
+def test_progress_stats_shape():
+    access = setup_user()
+    s = client.get('/api/progress/stats', cookies={'access_token': access})
+    assert s.status_code == 200
+    data = s.json()
+    assert data['total_lessons'] == 3
+    assert data['total_modules'] == 2
+    assert 'requests_limit_today' in data

@@ -39,3 +39,6 @@
   - endpoints modules/lessons/content,
   - server-side lock-check для lesson content,
   - тесты `test_course_content.py`.
+- Доведены progress endpoints к контрактной структуре:
+  - `GET /api/progress` (overall + modules + lessons),
+  - `GET /api/progress/stats`.

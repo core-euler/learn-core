@@ -28,6 +28,8 @@ from .rate_limit_entities import UserRateWindow
 from .minute_limit_service import check_minute_limit, MINUTE_LIMIT
 from .streaming import build_stub_stream
 from .env import is_test_mode, cookie_secure, cookie_samesite
+from .telegram_auth import validate_telegram_payload
+from .config import settings
 import os
 import json
 
@@ -61,6 +63,63 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     db.refresh(user)
     bootstrap_progress_for_user(db, user.id)
     return RegisterResponse(user=UserOut(id=user.id, email=user.email, first_name=user.first_name, auth_method=user.auth_method))
+
+
+@app.get('/api/auth/telegram/callback')
+def auth_telegram_callback(
+    id: str,
+    first_name: str,
+    username: str | None = None,
+    photo_url: str | None = None,
+    auth_date: str | None = None,
+    hash: str | None = None,
+    db: Session = Depends(get_db),
+):
+    if not settings.telegram_bot_token:
+        raise HTTPException(status_code=503, detail='telegram_auth_not_configured')
+
+    payload = {
+        'id': id,
+        'first_name': first_name,
+        'username': username or '',
+        'photo_url': photo_url or '',
+        'auth_date': auth_date or '',
+        'hash': hash or '',
+    }
+
+    ok = validate_telegram_payload(payload, settings.telegram_bot_token)
+    if not ok:
+        raise HTTPException(status_code=401, detail='invalid_telegram_auth')
+
+    user = db.execute(select(User).where(User.telegram_id == id)).scalar_one_or_none()
+    if not user:
+        user = User(
+            email=None,
+            password_hash=None,
+            first_name=first_name,
+            auth_method='telegram',
+            telegram_id=id,
+            telegram_username=username,
+            photo_url=photo_url,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        bootstrap_progress_for_user(db, user.id)
+
+    access = create_access_token(user.id)
+    refresh = make_refresh_token()
+    session = DbSession(
+        user_id=user.id,
+        refresh_token_hash=hash_refresh_token(refresh),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+    )
+    db.add(session)
+    db.commit()
+
+    resp = JSONResponse({'ok': True})
+    _set_auth_cookies(resp, access, refresh)
+    return resp
 
 
 @app.post("/api/auth/login")

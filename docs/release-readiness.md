@@ -12,7 +12,7 @@
 - [x] Configurable cookie flags (`secure`, `samesite`) via env
 - [x] Test-only endpoints restricted to `APP_ENV=test`
 - [ ] CSRF protection (double-submit) for state-changing endpoints
-- [ ] Telegram OAuth cryptographic validation end-to-end
+- [~] Telegram OAuth cryptographic validation partial: HMAC + freshness done; bot-id binding still pending
 - [ ] Password hashing policy upgrade for production KDF
 
 ## Data/Infra Checklist

@@ -7,9 +7,10 @@
 - Поднят backend-каркас на FastAPI.
 - Реализован первый инкремент auth/session endpoint-ов (MVP bootstrap).
 - Реализована reuse detection логика для refresh токена с глобальной инвалидизацией сессий пользователя.
-- Реализованы и запущены тесты auth/session контрактов: 7 passed.
+- Реализован Telegram callback auth с HMAC + freshness проверками.
+- Реализованы и запущены auth/session/telegram тесты.
 
 ## Ограничения текущего инкремента
-- Telegram OAuth flow пока не реализован.
-- CSRF и production cookie-политики пока не добавлены.
+- Telegram OAuth проверка соответствия конкретному bot-id пока не реализована отдельным шагом.
+- CSRF и production cookie-политики пока не добавлены полностью (базовые cookie flags уже вынесены в env).
 - Миграции (Alembic) пока не добавлены, используется auto-create таблиц на bootstrap.

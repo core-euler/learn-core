@@ -77,11 +77,22 @@ def refresh(refresh_token: str | None = Cookie(default=None), db: Session = Depe
     refresh_hash = hash_refresh_token(refresh_token)
     session = db.execute(select(DbSession).where(DbSession.refresh_token_hash == refresh_hash)).scalar_one_or_none()
 
-    exp = session.expires_at if session else None
+    if not session:
+        raise HTTPException(status_code=401, detail="invalid_refresh")
+
+    # Reuse detection: revoked token reuse means potential theft -> revoke all sessions for user.
+    if session.is_revoked:
+        user_sessions = db.execute(select(DbSession).where(DbSession.user_id == session.user_id)).scalars().all()
+        for s in user_sessions:
+            s.is_revoked = True
+        db.commit()
+        raise HTTPException(status_code=401, detail="refresh_reuse_detected")
+
+    exp = session.expires_at
     if exp is not None and exp.tzinfo is None:
         exp = exp.replace(tzinfo=timezone.utc)
 
-    if not session or session.is_revoked or datetime.now(timezone.utc) > exp:
+    if datetime.now(timezone.utc) > exp:
         raise HTTPException(status_code=401, detail="invalid_refresh")
 
     session.is_revoked = True

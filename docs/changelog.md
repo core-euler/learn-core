@@ -29,3 +29,4 @@
   - `backend/README.md`
 - Backend переведён с in-memory на SQLAlchemy persistence.
 - Добавлены `backend/Dockerfile` и `docker-compose.yml` (backend + PostgreSQL).
+- Усилена security-логика refresh reuse detection (глобальный revoke всех сессий пользователя).

@@ -67,6 +67,11 @@ def test_refresh_rotation_and_old_token_invalid():
 
     r2 = client.post('/api/auth/refresh', cookies={'refresh_token': old_refresh})
     assert r2.status_code == 401
+    assert r2.json()['detail'] == 'refresh_reuse_detected'
+
+    # After reuse detection, even the latest refresh must be revoked.
+    r3 = client.post('/api/auth/refresh', cookies={'refresh_token': new_refresh})
+    assert r3.status_code == 401
 
 
 def test_logout_revokes_current_session():

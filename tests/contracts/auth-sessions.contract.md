@@ -10,7 +10,7 @@
 4. Email registration accepted with valid credentials.
 5. Email login rejected with invalid credentials.
 6. Refresh rotates session token and invalidates previous token.
-7. Reuse of invalidated refresh token triggers global session invalidation.
+7. Reuse of invalidated refresh token triggers global session invalidation and returns dedicated auth error.
 8. Logout invalidates current session only.
 9. Logout-all invalidates all active sessions.
 

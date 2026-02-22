@@ -10,3 +10,8 @@
   - `contracts/*.contract.md`
   - `checklists/*.checklist.md`
   - `traceability.md`
+- Добавлен frontend documentation pack:
+  - `docs/frontend.md`
+  - `docs/phases/phase-7-frontend-app.md`
+  - `tests/contracts/frontend.contract.md`
+  - `tests/checklists/phase-7-frontend-app.checklist.md`

@@ -42,6 +42,7 @@ LLM Handbook — образовательная платформа с конте
 | AI Modes & RAG | docs/phases/phase-4-ai-rag.md | Лекция/Экзамен/Консультант, retrieval и guardrails |
 | Streaming & Limits | docs/phases/phase-5-streaming-limits.md | Потоковые ответы, надёжность и лимиты |
 | Deploy & Operations | docs/phases/phase-6-deploy-ops.md | Инициализация контента, окружение и деплой-критерии |
+| Frontend App | docs/phases/phase-7-frontend-app.md | UX-контракты, экраны и состояния интерфейса, согласованные с backend |
 
 ## Этапы реализации
 - Этап 1: Foundation Documentation Pack.
@@ -50,6 +51,7 @@ LLM Handbook — образовательная платформа с конте
 - Этап 4: AI/RAG Documentation Pack.
 - Этап 5: Streaming/Limits Documentation Pack.
 - Этап 6: Deploy/Operations Documentation Pack.
+- Этап 7: Frontend App Documentation Pack.
 
 ## Режим разработки
 Проект стартует в Incremental Mode: документация и тестовые контракты наращиваются этапно, без реализации до отдельного подтверждения.

@@ -1,7 +1,11 @@
 import hashlib
 import hmac
+import json
 import time
 from urllib.parse import parse_qsl
+from urllib.request import urlopen
+
+_cached_bot_id: str | None = None
 
 
 def validate_telegram_payload(payload: dict, bot_token: str, max_age_seconds: int = 86400) -> bool:
@@ -29,3 +33,18 @@ def validate_telegram_payload(payload: dict, bot_token: str, max_age_seconds: in
 
 def parse_telegram_callback_query(raw_query: str) -> dict:
     return dict(parse_qsl(raw_query, keep_blank_values=True))
+
+
+def resolve_bot_id(bot_token: str) -> str | None:
+    global _cached_bot_id
+    if _cached_bot_id:
+        return _cached_bot_id
+    try:
+        with urlopen(f"https://api.telegram.org/bot{bot_token}/getMe", timeout=5) as r:
+            data = json.loads(r.read().decode("utf-8"))
+            if data.get("ok") and data.get("result", {}).get("id"):
+                _cached_bot_id = str(data["result"]["id"])
+                return _cached_bot_id
+    except Exception:
+        return None
+    return None

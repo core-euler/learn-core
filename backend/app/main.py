@@ -28,7 +28,7 @@ from .rate_limit_entities import UserRateWindow
 from .minute_limit_service import check_minute_limit, MINUTE_LIMIT
 from .streaming import build_stub_stream
 from .env import is_test_mode, cookie_secure, cookie_samesite
-from .telegram_auth import validate_telegram_payload
+from .telegram_auth import validate_telegram_payload, resolve_bot_id
 from .config import settings
 import os
 import json
@@ -90,6 +90,11 @@ def auth_telegram_callback(
     ok = validate_telegram_payload(payload, settings.telegram_bot_token)
     if not ok:
         raise HTTPException(status_code=401, detail='invalid_telegram_auth')
+
+    if settings.telegram_bot_id:
+        resolved_bot_id = resolve_bot_id(settings.telegram_bot_token)
+        if not resolved_bot_id or resolved_bot_id != settings.telegram_bot_id:
+            raise HTTPException(status_code=401, detail='invalid_telegram_bot_binding')
 
     user = db.execute(select(User).where(User.telegram_id == id)).scalar_one_or_none()
     if not user:

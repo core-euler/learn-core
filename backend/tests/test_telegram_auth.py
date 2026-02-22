@@ -10,6 +10,7 @@ os.environ['TELEGRAM_BOT_TOKEN'] = 'test-bot-token'
 from fastapi.testclient import TestClient
 from backend.app.main import app
 from backend.app.config import settings
+import backend.app.main as main_mod
 
 
 client = TestClient(app)
@@ -23,6 +24,7 @@ def sign_payload(payload: dict, bot_token: str) -> str:
 
 def test_telegram_callback_happy_path():
     settings.telegram_bot_token = 'test-bot-token'
+    settings.telegram_bot_id = ''
     client.post('/_test/reset')
     payload = {
         'id': '123456',
@@ -41,6 +43,7 @@ def test_telegram_callback_happy_path():
 
 def test_telegram_callback_invalid_hash_rejected():
     settings.telegram_bot_token = 'test-bot-token'
+    settings.telegram_bot_id = ''
     client.post('/_test/reset')
     payload = {
         'id': '123456',
@@ -56,6 +59,7 @@ def test_telegram_callback_invalid_hash_rejected():
 
 def test_telegram_callback_stale_auth_rejected():
     settings.telegram_bot_token = 'test-bot-token'
+    settings.telegram_bot_id = ''
     client.post('/_test/reset')
     payload = {
         'id': '123456',
@@ -68,3 +72,23 @@ def test_telegram_callback_stale_auth_rejected():
 
     r = client.get('/api/auth/telegram/callback', params=payload)
     assert r.status_code == 401
+
+
+def test_telegram_bot_binding_rejected_on_mismatch():
+    settings.telegram_bot_token = 'test-bot-token'
+    settings.telegram_bot_id = '999'
+    main_mod.resolve_bot_id = lambda token: '111'
+
+    client.post('/_test/reset')
+    payload = {
+        'id': '123456',
+        'first_name': 'Kolya',
+        'username': 'okoloboga',
+        'photo_url': 'https://example.com/a.jpg',
+        'auth_date': str(int(time.time())),
+    }
+    payload['hash'] = sign_payload(payload, 'test-bot-token')
+
+    r = client.get('/api/auth/telegram/callback', params=payload)
+    assert r.status_code == 401
+    assert r.json()['detail'] == 'invalid_telegram_bot_binding'

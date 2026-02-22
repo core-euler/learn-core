@@ -58,3 +58,4 @@
   - configurable cookie security flags,
   - release-readiness snapshot (`docs/release-readiness.md`).
 - Добавлен Telegram auth callback endpoint с HMAC/freshness валидацией и тестами.
+- Добавлена bot-id binding проверка для Telegram auth (через resolve_bot_id/getMe) и тест mismatch-case.

@@ -53,3 +53,7 @@
   - usage в `progress/stats`.
 - Добавлен базовый SSE stream контракт для `chat/lecture` (`chunk` + `done`).
 - Добавлен минутный rate-limit и базовый reconnect-дедуп по `Last-Event-ID`.
+- Добавлен production-hardening инкремент:
+  - test routes gated by `APP_ENV=test`,
+  - configurable cookie security flags,
+  - release-readiness snapshot (`docs/release-readiness.md`).

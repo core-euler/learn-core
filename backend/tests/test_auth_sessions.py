@@ -1,3 +1,6 @@
+import os
+os.environ['APP_ENV'] = 'test'
+
 from fastapi.testclient import TestClient
 
 from backend.app.main import app

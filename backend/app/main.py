@@ -27,6 +27,7 @@ from .limits_service import check_and_increment_usage, DAILY_LIMIT
 from .rate_limit_entities import UserRateWindow
 from .minute_limit_service import check_minute_limit, MINUTE_LIMIT
 from .streaming import build_stub_stream
+from .env import is_test_mode, cookie_secure, cookie_samesite
 import os
 import json
 
@@ -39,8 +40,8 @@ def on_startup():
 
 
 def _set_auth_cookies(resp: Response, access: str, refresh: str) -> None:
-    resp.set_cookie("access_token", access, httponly=True)
-    resp.set_cookie("refresh_token", refresh, httponly=True)
+    resp.set_cookie("access_token", access, httponly=True, secure=cookie_secure(), samesite=cookie_samesite())
+    resp.set_cookie("refresh_token", refresh, httponly=True, secure=cookie_secure(), samesite=cookie_samesite())
 
 
 @app.post("/api/auth/register", response_model=RegisterResponse, status_code=201)
@@ -180,6 +181,8 @@ def logout_all(access_token: str | None = Cookie(default=None), db: Session = De
 
 @app.post('/_test/reset')
 def _test_reset(db: Session = Depends(get_db)):
+    if not is_test_mode():
+        raise HTTPException(status_code=404, detail='not_found')
     Base.metadata.create_all(bind=engine)
     db.query(UserLessonProgress).delete()
     db.query(UserModuleProgress).delete()
@@ -197,6 +200,8 @@ def _test_reset(db: Session = Depends(get_db)):
 
 @app.post('/_test/reset-minute-window')
 def _test_reset_minute_window(access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not is_test_mode():
+        raise HTTPException(status_code=404, detail='not_found')
     if not access_token:
         raise HTTPException(status_code=401, detail='missing_access')
     try:
@@ -214,6 +219,8 @@ def _test_reset_minute_window(access_token: str | None = Cookie(default=None), d
 
 @app.post('/_test/seed-course')
 def _test_seed_course(db: Session = Depends(get_db)):
+    if not is_test_mode():
+        raise HTTPException(status_code=404, detail='not_found')
     Base.metadata.create_all(bind=engine)
     m1 = Module(title='M1', description='m1', order_index=1, is_published=True)
     m2 = Module(title='M2', description='m2', order_index=2, is_published=True)

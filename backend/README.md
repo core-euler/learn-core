@@ -21,6 +21,8 @@
 - Добавлен базовый SSE ответ для lecture режима (event-stream).
 - Добавлены дневной + минутный лимиты для chat endpoint-ов.
 - Добавлена базовая reconnect-дедуп логика по `Last-Event-ID`.
+- Test-only endpoints теперь доступны только при `APP_ENV=test`.
+- Cookie flags (`secure`, `samesite`) управляются env-переменными.
 
 ## Запуск тестов
 ```bash

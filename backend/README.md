@@ -15,6 +15,7 @@
 - Покрытие тестами phase-2 auth/session контрактов (`backend/tests/test_auth_sessions.py`).
 - Начат phase-3: course/progress сущности и тесты (`backend/tests/test_course_progress.py`).
 - Добавлены phase-3 content endpoints и тесты (`backend/tests/test_course_content.py`).
+- Начат phase-4 AI scaffold и тесты режимов (`backend/tests/test_ai_modes.py`).
 
 ## Запуск тестов
 ```bash

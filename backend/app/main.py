@@ -19,6 +19,9 @@ from .entities import User, Session as DbSession
 from .course_entities import Module, Lesson, UserLessonProgress, UserModuleProgress
 from .progress_service import bootstrap_progress_for_user, complete_lesson_and_unlock_next
 from .course_schemas import ModuleOut, LessonOut, LessonContentOut
+from .ai_entities import AiSession, AiMessage
+from .ai_schemas import LectureRequest, ExamStartRequest, ConsultantRequest
+from .ai_service import ensure_mode_access, create_ai_session
 import os
 
 app = FastAPI(title="LLM Handbook MVP Backend")
@@ -176,6 +179,8 @@ def _test_reset(db: Session = Depends(get_db)):
     db.query(UserModuleProgress).delete()
     db.query(Lesson).delete()
     db.query(Module).delete()
+    db.query(AiMessage).delete()
+    db.query(AiSession).delete()
     db.query(DbSession).delete()
     db.query(User).delete()
     db.commit()
@@ -329,6 +334,70 @@ def get_progress_stats(access_token: str | None = Cookie(default=None), db: Sess
         'requests_today': 0,
         'requests_limit_today': 30,
     }
+
+
+@app.post('/api/chat/lecture')
+def chat_lecture(payload: LectureRequest, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not access_token:
+        raise HTTPException(status_code=401, detail='missing_access')
+    try:
+        token_payload = decode_access_token(access_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail='invalid_access')
+    user_id = token_payload.get('user_id')
+
+    ok, err = ensure_mode_access(db, user_id, 'lecture', payload.lesson_id)
+    if not ok:
+        raise HTTPException(status_code=403, detail=err)
+
+    session = create_ai_session(db, user_id=user_id, mode='lecture', lesson_id=payload.lesson_id)
+    return {'session_id': session.id, 'reply': 'lecture_stub_response'}
+
+
+@app.post('/api/chat/exam/start')
+def chat_exam_start(payload: ExamStartRequest, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not access_token:
+        raise HTTPException(status_code=401, detail='missing_access')
+    try:
+        token_payload = decode_access_token(access_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail='invalid_access')
+    user_id = token_payload.get('user_id')
+
+    ok, err = ensure_mode_access(db, user_id, 'exam', payload.lesson_id)
+    if not ok:
+        raise HTTPException(status_code=403, detail=err)
+
+    rubric = '{"generated": true}'
+    session = create_ai_session(db, user_id=user_id, mode='exam', lesson_id=payload.lesson_id, exam_rubric=rubric)
+    return {
+        'session_id': session.id,
+        'questions': [
+            {'id': 1, 'type': 'multiple_choice', 'text': 'Q1', 'options': ['A', 'B', 'C', 'D']},
+            {'id': 2, 'type': 'multiple_choice', 'text': 'Q2', 'options': ['A', 'B', 'C', 'D']},
+            {'id': 3, 'type': 'multiple_choice', 'text': 'Q3', 'options': ['A', 'B', 'C', 'D']},
+            {'id': 4, 'type': 'open', 'text': 'Q4'},
+            {'id': 5, 'type': 'open', 'text': 'Q5'},
+        ]
+    }
+
+
+@app.post('/api/chat/consultant')
+def chat_consultant(payload: ConsultantRequest, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not access_token:
+        raise HTTPException(status_code=401, detail='missing_access')
+    try:
+        token_payload = decode_access_token(access_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail='invalid_access')
+    user_id = token_payload.get('user_id')
+
+    ok, err = ensure_mode_access(db, user_id, 'consultant', None)
+    if not ok:
+        raise HTTPException(status_code=403, detail=err)
+
+    session = create_ai_session(db, user_id=user_id, mode='consultant', lesson_id=None)
+    return {'session_id': session.id, 'reply': 'consultant_stub_response', 'source': 'opened_lessons_only'}
 
 
 @app.post('/api/progress/lessons/{lesson_id}/complete')

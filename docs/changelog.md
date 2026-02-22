@@ -42,3 +42,7 @@
 - Доведены progress endpoints к контрактной структуре:
   - `GET /api/progress` (overall + modules + lessons),
   - `GET /api/progress/stats`.
+- Стартован phase-4 backend scaffold:
+  - сущности `ai_sessions` / `ai_messages`,
+  - endpoints `lecture`, `exam/start`, `consultant`,
+  - тесты режимных ограничений `test_ai_modes.py`.

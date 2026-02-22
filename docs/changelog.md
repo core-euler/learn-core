@@ -27,3 +27,5 @@
   - `backend/app/*` (auth/session API)
   - `backend/tests/test_auth_sessions.py`
   - `backend/README.md`
+- Backend переведён с in-memory на SQLAlchemy persistence.
+- Добавлены `backend/Dockerfile` и `docker-compose.yml` (backend + PostgreSQL).

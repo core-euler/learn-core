@@ -9,6 +9,6 @@
 - Реализованы и запущены тесты auth/session контрактов: 7 passed.
 
 ## Ограничения текущего инкремента
-- Persistence слой временно in-memory (без PostgreSQL).
 - Telegram OAuth flow пока не реализован.
 - CSRF и production cookie-политики пока не добавлены.
+- Миграции (Alembic) пока не добавлены, используется auto-create таблиц на bootstrap.

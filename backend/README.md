@@ -10,7 +10,8 @@
   - `POST /api/auth/logout`
   - `POST /api/auth/logout-all`
   - `GET /api/auth/me`
-- In-memory хранилище для пользователей и сессий (временный слой для TDD-цикла).
+- SQLAlchemy persistence слой для пользователей и сессий.
+- Docker Compose окружение с PostgreSQL (`docker-compose.yml`).
 - Покрытие тестами phase-2 auth/session контрактов (`backend/tests/test_auth_sessions.py`).
 
 ## Запуск тестов

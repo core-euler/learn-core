@@ -6,3 +6,7 @@
 - Добавлены этапные документы в `docs/phases/`.
 - Добавлены служебные документы: `issues.md`, `antipatterns.md`, `dna-map.md`, `benchmark.md`.
 - Добавлены шаблоны результатов этапов в `docs/results/`.
+- Добавлен документационный контур тестов в `tests/`:
+  - `contracts/*.contract.md`
+  - `checklists/*.checklist.md`
+  - `traceability.md`

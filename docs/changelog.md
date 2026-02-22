@@ -35,3 +35,7 @@
   - bootstrap прогресса,
   - endpoints прогресса,
   - тесты `test_course_progress.py`.
+- Расширен phase-3 backend:
+  - endpoints modules/lessons/content,
+  - server-side lock-check для lesson content,
+  - тесты `test_course_content.py`.

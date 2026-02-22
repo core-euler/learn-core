@@ -18,6 +18,8 @@ from .database import get_db, Base, engine
 from .entities import User, Session as DbSession
 from .course_entities import Module, Lesson, UserLessonProgress, UserModuleProgress
 from .progress_service import bootstrap_progress_for_user, complete_lesson_and_unlock_next
+from .course_schemas import ModuleOut, LessonOut, LessonContentOut
+import os
 
 app = FastAPI(title="LLM Handbook MVP Backend")
 
@@ -190,12 +192,71 @@ def _test_seed_course(db: Session = Depends(get_db)):
     db.refresh(m1)
     db.refresh(m2)
     db.add_all([
-        Lesson(module_id=m1.id, title='L1', description='l1', order_index=1, md_file_path='m1/l1.md', is_published=True),
-        Lesson(module_id=m1.id, title='L2', description='l2', order_index=2, md_file_path='m1/l2.md', is_published=True),
-        Lesson(module_id=m2.id, title='L3', description='l3', order_index=1, md_file_path='m2/l1.md', is_published=True),
+        Lesson(module_id=m1.id, title='L1', description='l1', order_index=1, md_file_path='content/m1/l1.md', is_published=True),
+        Lesson(module_id=m1.id, title='L2', description='l2', order_index=2, md_file_path='content/m1/l2.md', is_published=True),
+        Lesson(module_id=m2.id, title='L3', description='l3', order_index=1, md_file_path='content/m2/l1.md', is_published=True),
     ])
     db.commit()
     return {'ok': True}
+
+
+@app.get('/api/modules')
+def get_modules(db: Session = Depends(get_db)):
+    mods = db.execute(select(Module).where(Module.is_published == True).order_by(Module.order_index.asc())).scalars().all()
+    out = []
+    for m in mods:
+        count = db.execute(select(Lesson).where(Lesson.module_id == m.id, Lesson.is_published == True)).scalars().all()
+        out.append(ModuleOut(id=m.id, title=m.title, description=m.description, order_index=m.order_index, lessons_count=len(count)).model_dump())
+    return {'modules': out}
+
+
+@app.get('/api/modules/{module_id}')
+def get_module(module_id: str, db: Session = Depends(get_db)):
+    m = db.get(Module, module_id)
+    if not m or not m.is_published:
+        raise HTTPException(status_code=404, detail='module_not_found')
+    lessons = db.execute(select(Lesson).where(Lesson.module_id == m.id, Lesson.is_published == True).order_by(Lesson.order_index.asc())).scalars().all()
+    return {
+        'id': m.id,
+        'title': m.title,
+        'description': m.description,
+        'order_index': m.order_index,
+        'lessons': [LessonOut(id=l.id, module_id=l.module_id, title=l.title, description=l.description, order_index=l.order_index).model_dump() for l in lessons]
+    }
+
+
+@app.get('/api/lessons/{lesson_id}')
+def get_lesson(lesson_id: str, db: Session = Depends(get_db)):
+    l = db.get(Lesson, lesson_id)
+    if not l or not l.is_published:
+        raise HTTPException(status_code=404, detail='lesson_not_found')
+    return LessonOut(id=l.id, module_id=l.module_id, title=l.title, description=l.description, order_index=l.order_index)
+
+
+@app.get('/api/lessons/{lesson_id}/content')
+def get_lesson_content(lesson_id: str, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not access_token:
+        raise HTTPException(status_code=401, detail='missing_access')
+    try:
+        payload = decode_access_token(access_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail='invalid_access')
+
+    l = db.get(Lesson, lesson_id)
+    if not l or not l.is_published:
+        raise HTTPException(status_code=404, detail='lesson_not_found')
+
+    lp = db.execute(select(UserLessonProgress).where(UserLessonProgress.user_id == payload.get('user_id'), UserLessonProgress.lesson_id == lesson_id)).scalar_one_or_none()
+    if not lp or lp.status == 'locked':
+        raise HTTPException(status_code=403, detail='lesson_locked')
+
+    path = os.path.join(os.path.dirname(__file__), '..', l.md_file_path)
+    path = os.path.abspath(path)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail='content_not_found')
+    with open(path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    return LessonContentOut(lesson_id=l.id, title=l.title, content=content)
 
 
 @app.get('/api/progress')

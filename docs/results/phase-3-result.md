@@ -9,11 +9,17 @@
 - Реализованы endpoints:
   - `GET /api/progress`
   - `POST /api/progress/lessons/{lesson_id}/complete`
-- Добавлены тесты phase-3 логики: `backend/tests/test_course_progress.py`.
+  - `GET /api/modules`
+  - `GET /api/modules/{module_id}`
+  - `GET /api/lessons/{lesson_id}`
+  - `GET /api/lessons/{lesson_id}/content` (с lock-проверкой)
+- Добавлены тесты phase-3 логики:
+  - `backend/tests/test_course_progress.py`
+  - `backend/tests/test_course_content.py`
 
 ## Тесты
-- Общий прогон: 10 passed.
+- Общий прогон: 12 passed.
 
 ## Ограничения
 - Контент/модули пока seed-ятся тестовым endpoint-ом `_test/seed-course`.
-- Полные production endpoints modules/lessons ещё в следующем инкременте.
+- Структура ответа `/api/progress` пока упрощённая, будет доведена до полного контракта spec.

@@ -20,3 +20,6 @@
   - `tests/e2e-strategy.md`
   - `tests/e2e-cases.md`
   - `tests/checklists/e2e-readiness.checklist.md`
+- Добавлены документы релизных e2e-гейтов:
+  - `tests/e2e-priority-matrix.md`
+  - `tests/e2e-test-data-contract.md`

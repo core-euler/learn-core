@@ -30,3 +30,8 @@
 - Backend переведён с in-memory на SQLAlchemy persistence.
 - Добавлены `backend/Dockerfile` и `docker-compose.yml` (backend + PostgreSQL).
 - Усилена security-логика refresh reuse detection (глобальный revoke всех сессий пользователя).
+- Стартован phase-3 backend инкремент (Course/Progress):
+  - сущности курса и прогресса,
+  - bootstrap прогресса,
+  - endpoints прогресса,
+  - тесты `test_course_progress.py`.

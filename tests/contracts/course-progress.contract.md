@@ -6,7 +6,7 @@
 3. Completing all lessons unlocks next module.
 4. Lesson completion via lecture action sets completed status.
 5. Lesson completion via exam pass threshold sets completed status.
-6. Locked lesson content request returns access denied contract.
+6. Attempt to complete locked lesson returns access denied contract.
 
 ## Invariants
 - Нельзя иметь available в модуле, если предыдущий модуль не завершён.

@@ -16,6 +16,8 @@ from .security import (
 )
 from .database import get_db, Base, engine
 from .entities import User, Session as DbSession
+from .course_entities import Module, Lesson, UserLessonProgress, UserModuleProgress
+from .progress_service import bootstrap_progress_for_user, complete_lesson_and_unlock_next
 
 app = FastAPI(title="LLM Handbook MVP Backend")
 
@@ -45,6 +47,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+    bootstrap_progress_for_user(db, user.id)
     return RegisterResponse(user=UserOut(id=user.id, email=user.email, first_name=user.first_name, auth_method=user.auth_method))
 
 
@@ -167,7 +170,67 @@ def logout_all(access_token: str | None = Cookie(default=None), db: Session = De
 @app.post('/_test/reset')
 def _test_reset(db: Session = Depends(get_db)):
     Base.metadata.create_all(bind=engine)
+    db.query(UserLessonProgress).delete()
+    db.query(UserModuleProgress).delete()
+    db.query(Lesson).delete()
+    db.query(Module).delete()
     db.query(DbSession).delete()
     db.query(User).delete()
     db.commit()
     return {"ok": True, "ts": datetime.now(timezone.utc).isoformat()}
+
+
+@app.post('/_test/seed-course')
+def _test_seed_course(db: Session = Depends(get_db)):
+    Base.metadata.create_all(bind=engine)
+    m1 = Module(title='M1', description='m1', order_index=1, is_published=True)
+    m2 = Module(title='M2', description='m2', order_index=2, is_published=True)
+    db.add_all([m1, m2])
+    db.commit()
+    db.refresh(m1)
+    db.refresh(m2)
+    db.add_all([
+        Lesson(module_id=m1.id, title='L1', description='l1', order_index=1, md_file_path='m1/l1.md', is_published=True),
+        Lesson(module_id=m1.id, title='L2', description='l2', order_index=2, md_file_path='m1/l2.md', is_published=True),
+        Lesson(module_id=m2.id, title='L3', description='l3', order_index=1, md_file_path='m2/l1.md', is_published=True),
+    ])
+    db.commit()
+    return {'ok': True}
+
+
+@app.get('/api/progress')
+def get_progress(access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not access_token:
+        raise HTTPException(status_code=401, detail='missing_access')
+    try:
+        payload = decode_access_token(access_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail='invalid_access')
+
+    user_id = payload.get('user_id')
+    modules = db.execute(select(UserModuleProgress).where(UserModuleProgress.user_id == user_id)).scalars().all()
+    lessons = db.execute(select(UserLessonProgress).where(UserLessonProgress.user_id == user_id)).scalars().all()
+    return {
+        'modules_count': len(modules),
+        'lessons_count': len(lessons),
+        'module_statuses': [m.status for m in modules],
+        'lesson_statuses': [l.status for l in lessons],
+    }
+
+
+@app.post('/api/progress/lessons/{lesson_id}/complete')
+def complete_lesson(lesson_id: str, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not access_token:
+        raise HTTPException(status_code=401, detail='missing_access')
+    try:
+        payload = decode_access_token(access_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail='invalid_access')
+    user_id = payload.get('user_id')
+
+    lp = db.execute(select(UserLessonProgress).where(UserLessonProgress.user_id == user_id, UserLessonProgress.lesson_id == lesson_id)).scalar_one_or_none()
+    if not lp or lp.status == 'locked':
+        raise HTTPException(status_code=403, detail='lesson_locked')
+
+    complete_lesson_and_unlock_next(db, user_id, lesson_id)
+    return {'ok': True}

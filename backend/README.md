@@ -13,6 +13,7 @@
 - SQLAlchemy persistence слой для пользователей и сессий.
 - Docker Compose окружение с PostgreSQL (`docker-compose.yml`).
 - Покрытие тестами phase-2 auth/session контрактов (`backend/tests/test_auth_sessions.py`).
+- Начат phase-3: course/progress сущности и тесты (`backend/tests/test_course_progress.py`).
 
 ## Запуск тестов
 ```bash

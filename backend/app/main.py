@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import FastAPI, HTTPException, Response, Cookie, Depends
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Response, Cookie, Depends, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,7 @@ from .ai_schemas import LectureRequest, ExamStartRequest, ConsultantRequest
 from .ai_service import ensure_mode_access, create_ai_session
 from .usage_entities import UserUsage
 from .limits_service import check_and_increment_usage, DAILY_LIMIT
+from .streaming import build_stub_stream
 import os
 import json
 
@@ -342,7 +343,7 @@ def get_progress_stats(access_token: str | None = Cookie(default=None), db: Sess
 
 
 @app.post('/api/chat/lecture')
-def chat_lecture(payload: LectureRequest, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+def chat_lecture(payload: LectureRequest, request: Request, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
     if not access_token:
         raise HTTPException(status_code=401, detail='missing_access')
     try:
@@ -363,6 +364,10 @@ def chat_lecture(payload: LectureRequest, access_token: str | None = Cookie(defa
     db.add(AiMessage(session_id=session.id, role='user', content=payload.message, tokens=0))
     db.add(AiMessage(session_id=session.id, role='assistant', content='lecture_stub_response', tokens=0))
     db.commit()
+
+    if 'text/event-stream' in (request.headers.get('accept') or ''):
+        return StreamingResponse(build_stub_stream(payload.message_id, 'lecture_stub_response'), media_type='text/event-stream')
+
     return {'session_id': session.id, 'reply': 'lecture_stub_response'}
 
 

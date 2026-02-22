@@ -106,6 +106,29 @@ def test_exam_start_finish_sessions_and_consultant_gate():
     assert consultant_ok.status_code == 200
 
 
+def test_lecture_sse_stream_contract():
+    access = setup_user()
+
+    db = SessionLocal()
+    try:
+        available = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalar_one()
+        lesson_id = available.lesson_id
+    finally:
+        db.close()
+
+    r = client.post('/api/chat/lecture', cookies={'access_token': access}, headers={'accept': 'text/event-stream'}, json={
+        'lesson_id': lesson_id,
+        'session_id': None,
+        'message': 'hello stream',
+        'message_id': 'stream-1'
+    })
+    assert r.status_code == 200
+    assert 'text/event-stream' in r.headers.get('content-type', '')
+    body = r.text
+    assert '"type": "chunk"' in body
+    assert '"type": "done"' in body
+
+
 def test_daily_limit_enforced_on_chat_requests():
     access = setup_user()
 

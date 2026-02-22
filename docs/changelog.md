@@ -51,3 +51,4 @@
 - Стартован phase-5:
   - `user_usage` и базовый дневной лимит на chat endpoint-ы,
   - usage в `progress/stats`.
+- Добавлен базовый SSE stream контракт для `chat/lecture` (`chunk` + `done`).

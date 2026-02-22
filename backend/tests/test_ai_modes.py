@@ -45,7 +45,7 @@ def test_lecture_mode_requires_available_lesson():
     assert denied.status_code == 403
 
 
-def test_exam_start_and_consultant_gate():
+def test_exam_start_finish_sessions_and_consultant_gate():
     access = setup_user()
 
     db = SessionLocal()
@@ -58,6 +58,27 @@ def test_exam_start_and_consultant_gate():
     ex = client.post('/api/chat/exam/start', cookies={'access_token': access}, json={'lesson_id': available_id})
     assert ex.status_code == 200
     assert len(ex.json()['questions']) == 5
+    sid = ex.json()['session_id']
+
+    finish = client.post('/api/chat/exam/finish', cookies={'access_token': access}, json={
+        'session_id': sid,
+        'answers': [
+            {'question_id': 1, 'answer': 'A'},
+            {'question_id': 2, 'answer': 'B'},
+            {'question_id': 3, 'answer': 'C'},
+            {'question_id': 4, 'answer': 'x'},
+            {'question_id': 5, 'answer': 'x'},
+        ]
+    })
+    assert finish.status_code == 200
+    assert finish.json()['passed'] is True
+
+    sessions = client.get('/api/chat/sessions', cookies={'access_token': access})
+    assert sessions.status_code == 200
+    assert len(sessions.json()['sessions']) >= 1
+
+    one = client.get(f"/api/chat/sessions/{sid}", cookies={'access_token': access})
+    assert one.status_code == 200
 
     consultant_denied = client.post('/api/chat/consultant', cookies={'access_token': access}, json={
         'session_id': None,
@@ -83,3 +104,31 @@ def test_exam_start_and_consultant_gate():
         'message_id': 'c2'
     })
     assert consultant_ok.status_code == 200
+
+
+def test_daily_limit_enforced_on_chat_requests():
+    access = setup_user()
+
+    db = SessionLocal()
+    try:
+        available = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalar_one()
+        lesson_id = available.lesson_id
+    finally:
+        db.close()
+
+    for i in range(30):
+        r = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
+            'lesson_id': lesson_id,
+            'session_id': None,
+            'message': f'hello {i}',
+            'message_id': f'm{i}'
+        })
+        assert r.status_code == 200
+
+    blocked = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
+        'lesson_id': lesson_id,
+        'session_id': None,
+        'message': 'overflow',
+        'message_id': 'm-over'
+    })
+    assert blocked.status_code == 429

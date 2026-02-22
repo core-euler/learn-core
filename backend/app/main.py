@@ -22,7 +22,10 @@ from .course_schemas import ModuleOut, LessonOut, LessonContentOut
 from .ai_entities import AiSession, AiMessage
 from .ai_schemas import LectureRequest, ExamStartRequest, ConsultantRequest
 from .ai_service import ensure_mode_access, create_ai_session
+from .usage_entities import UserUsage
+from .limits_service import check_and_increment_usage, DAILY_LIMIT
 import os
+import json
 
 app = FastAPI(title="LLM Handbook MVP Backend")
 
@@ -181,6 +184,7 @@ def _test_reset(db: Session = Depends(get_db)):
     db.query(Module).delete()
     db.query(AiMessage).delete()
     db.query(AiSession).delete()
+    db.query(UserUsage).delete()
     db.query(DbSession).delete()
     db.query(User).delete()
     db.commit()
@@ -325,14 +329,15 @@ def get_progress_stats(access_token: str | None = Cookie(default=None), db: Sess
     completed_lessons = len(db.execute(select(UserLessonProgress).where(UserLessonProgress.user_id == user_id, UserLessonProgress.status == 'completed')).scalars().all())
     completed_modules = len(db.execute(select(UserModuleProgress).where(UserModuleProgress.user_id == user_id, UserModuleProgress.status == 'completed')).scalars().all())
 
+    usage = db.execute(select(UserUsage).where(UserUsage.user_id == user_id)).scalar_one_or_none()
     return {
         'total_lessons': total_lessons,
         'completed_lessons': completed_lessons,
         'total_modules': total_modules,
         'completed_modules': completed_modules,
-        'total_ai_requests': 0,
-        'requests_today': 0,
-        'requests_limit_today': 30,
+        'total_ai_requests': usage.total_requests if usage else 0,
+        'requests_today': usage.requests_today if usage else 0,
+        'requests_limit_today': DAILY_LIMIT,
     }
 
 
@@ -346,11 +351,18 @@ def chat_lecture(payload: LectureRequest, access_token: str | None = Cookie(defa
         raise HTTPException(status_code=401, detail='invalid_access')
     user_id = token_payload.get('user_id')
 
+    allowed, err = check_and_increment_usage(db, user_id)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=err)
+
     ok, err = ensure_mode_access(db, user_id, 'lecture', payload.lesson_id)
     if not ok:
         raise HTTPException(status_code=403, detail=err)
 
     session = create_ai_session(db, user_id=user_id, mode='lecture', lesson_id=payload.lesson_id)
+    db.add(AiMessage(session_id=session.id, role='user', content=payload.message, tokens=0))
+    db.add(AiMessage(session_id=session.id, role='assistant', content='lecture_stub_response', tokens=0))
+    db.commit()
     return {'session_id': session.id, 'reply': 'lecture_stub_response'}
 
 
@@ -364,12 +376,24 @@ def chat_exam_start(payload: ExamStartRequest, access_token: str | None = Cookie
         raise HTTPException(status_code=401, detail='invalid_access')
     user_id = token_payload.get('user_id')
 
+    allowed, err = check_and_increment_usage(db, user_id)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=err)
+
     ok, err = ensure_mode_access(db, user_id, 'exam', payload.lesson_id)
     if not ok:
         raise HTTPException(status_code=403, detail=err)
 
-    rubric = '{"generated": true}'
-    session = create_ai_session(db, user_id=user_id, mode='exam', lesson_id=payload.lesson_id, exam_rubric=rubric)
+    rubric_data = {
+        'questions': [
+            {'id': 1, 'type': 'multiple_choice', 'text': 'Q1', 'options': ['A', 'B', 'C', 'D'], 'answer': 'A'},
+            {'id': 2, 'type': 'multiple_choice', 'text': 'Q2', 'options': ['A', 'B', 'C', 'D'], 'answer': 'B'},
+            {'id': 3, 'type': 'multiple_choice', 'text': 'Q3', 'options': ['A', 'B', 'C', 'D'], 'answer': 'C'},
+            {'id': 4, 'type': 'open', 'text': 'Q4', 'answer': 'open'},
+            {'id': 5, 'type': 'open', 'text': 'Q5', 'answer': 'open'},
+        ]
+    }
+    session = create_ai_session(db, user_id=user_id, mode='exam', lesson_id=payload.lesson_id, exam_rubric=json.dumps(rubric_data))
     return {
         'session_id': session.id,
         'questions': [
@@ -382,6 +406,81 @@ def chat_exam_start(payload: ExamStartRequest, access_token: str | None = Cookie
     }
 
 
+@app.post('/api/chat/exam/finish')
+def chat_exam_finish(payload: dict, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not access_token:
+        raise HTTPException(status_code=401, detail='missing_access')
+    try:
+        token_payload = decode_access_token(access_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail='invalid_access')
+    user_id = token_payload.get('user_id')
+
+    session_id = payload.get('session_id')
+    answers = payload.get('answers', [])
+    s = db.get(AiSession, session_id)
+    if not s or s.user_id != user_id or s.mode != 'exam':
+        raise HTTPException(status_code=404, detail='session_not_found')
+
+    rubric = json.loads(s.exam_rubric or '{}')
+    questions = rubric.get('questions', [])
+    correct = 0
+    details = []
+    for q in questions:
+        given = next((a for a in answers if a.get('question_id') == q['id']), None)
+        is_correct = bool(given and given.get('answer'))
+        if q['type'] == 'multiple_choice':
+            is_correct = bool(given and given.get('answer') == q['answer'])
+        if is_correct:
+            correct += 1
+        details.append({'question_id': q['id'], 'is_correct': is_correct, 'comment': 'ok' if is_correct else 'wrong'})
+
+    score = int((correct / len(questions)) * 100) if questions else 0
+    passed = score >= 70
+
+    lp = db.execute(select(UserLessonProgress).where(UserLessonProgress.user_id == user_id, UserLessonProgress.lesson_id == s.lesson_id)).scalar_one_or_none()
+    if lp:
+        lp.exam_attempts += 1
+        lp.exam_score = score
+        if passed and lp.status != 'completed':
+            complete_lesson_and_unlock_next(db, user_id, s.lesson_id)
+        else:
+            db.commit()
+
+    return {'session_id': s.id, 'score': score, 'passed': passed, 'lesson_completed': bool(lp and lp.status == 'completed'), 'answers': details}
+
+
+@app.get('/api/chat/sessions')
+def chat_sessions(access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not access_token:
+        raise HTTPException(status_code=401, detail='missing_access')
+    try:
+        token_payload = decode_access_token(access_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail='invalid_access')
+    user_id = token_payload.get('user_id')
+
+    rows = db.execute(select(AiSession).where(AiSession.user_id == user_id).order_by(AiSession.created_at.desc())).scalars().all()
+    return {'sessions': [{'id': s.id, 'mode': s.mode, 'lesson_id': s.lesson_id, 'created_at': s.created_at.isoformat()} for s in rows]}
+
+
+@app.get('/api/chat/sessions/{session_id}')
+def chat_session(session_id: str, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not access_token:
+        raise HTTPException(status_code=401, detail='missing_access')
+    try:
+        token_payload = decode_access_token(access_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail='invalid_access')
+    user_id = token_payload.get('user_id')
+
+    s = db.get(AiSession, session_id)
+    if not s or s.user_id != user_id:
+        raise HTTPException(status_code=404, detail='session_not_found')
+    msgs = db.execute(select(AiMessage).where(AiMessage.session_id == s.id).order_by(AiMessage.created_at.asc())).scalars().all()
+    return {'id': s.id, 'mode': s.mode, 'lesson_id': s.lesson_id, 'messages': [{'role': m.role, 'content': m.content} for m in msgs]}
+
+
 @app.post('/api/chat/consultant')
 def chat_consultant(payload: ConsultantRequest, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
     if not access_token:
@@ -392,11 +491,18 @@ def chat_consultant(payload: ConsultantRequest, access_token: str | None = Cooki
         raise HTTPException(status_code=401, detail='invalid_access')
     user_id = token_payload.get('user_id')
 
+    allowed, err = check_and_increment_usage(db, user_id)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=err)
+
     ok, err = ensure_mode_access(db, user_id, 'consultant', None)
     if not ok:
         raise HTTPException(status_code=403, detail=err)
 
     session = create_ai_session(db, user_id=user_id, mode='consultant', lesson_id=None)
+    db.add(AiMessage(session_id=session.id, role='user', content=payload.message, tokens=0))
+    db.add(AiMessage(session_id=session.id, role='assistant', content='consultant_stub_response', tokens=0))
+    db.commit()
     return {'session_id': session.id, 'reply': 'consultant_stub_response', 'source': 'opened_lessons_only'}
 
 

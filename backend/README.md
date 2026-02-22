@@ -16,6 +16,8 @@
 - Начат phase-3: course/progress сущности и тесты (`backend/tests/test_course_progress.py`).
 - Добавлены phase-3 content endpoints и тесты (`backend/tests/test_course_content.py`).
 - Начат phase-4 AI scaffold и тесты режимов (`backend/tests/test_ai_modes.py`).
+- Расширен AI API: exam finish, sessions history.
+- Начат phase-5: базовые usage лимиты для chat endpoint-ов.
 
 ## Запуск тестов
 ```bash

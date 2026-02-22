@@ -46,3 +46,8 @@
   - сущности `ai_sessions` / `ai_messages`,
   - endpoints `lecture`, `exam/start`, `consultant`,
   - тесты режимных ограничений `test_ai_modes.py`.
+- Расширен phase-4:
+  - `exam/finish`, `chat/sessions`, `chat/sessions/{id}`.
+- Стартован phase-5:
+  - `user_usage` и базовый дневной лимит на chat endpoint-ы,
+  - usage в `progress/stats`.

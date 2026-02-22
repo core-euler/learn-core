@@ -15,3 +15,8 @@
   - `docs/phases/phase-7-frontend-app.md`
   - `tests/contracts/frontend.contract.md`
   - `tests/checklists/phase-7-frontend-app.checklist.md`
+- Добавлен e2e-ориентир для фронта:
+  - `docs/frontend-state-maps.md`
+  - `tests/e2e-strategy.md`
+  - `tests/e2e-cases.md`
+  - `tests/checklists/e2e-readiness.checklist.md`

@@ -70,20 +70,21 @@ export function LectureModePage() {
   }
 
   return (
-    <div>
-      <h3>Lecture</h3>
-      <div className="chat-box">
+    <div className="chat-panel">
+      <div className="chat-log">
         {messages.map((m, i) => (
-          <p key={i}><b>{m.role}:</b> {m.text}</p>
+          <p key={i} className={`msg msg-${m.role}`}>
+            <b>{m.role}:</b> {m.text}
+          </p>
         ))}
       </div>
-      {isStreaming && <p>Генерация ответа...</p>}
+      {isStreaming && <p className="muted">Генерация ответа...</p>}
       {streamError && <p className="error">{streamError}</p>}
-      <form onSubmit={submit}>
+      <form onSubmit={submit} className="composer">
         <input value={input} onChange={(e) => setInput(e.target.value)} maxLength={4000} placeholder="Ваш вопрос" />
         <button type="submit" disabled={isStreaming}>Send</button>
       </form>
-      <button onClick={() => api.completeLesson(lessonId)}>Завершить урок</button>
+      <button className="ghost-btn" onClick={() => api.completeLesson(lessonId)}>Завершить урок</button>
     </div>
   );
 }

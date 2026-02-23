@@ -23,8 +23,7 @@ export function ExamModePage() {
   };
 
   return (
-    <div>
-      <h3>Exam</h3>
+    <div className="chat-panel">
       {!exam ? (
         <button onClick={start}>Start exam</button>
       ) : (

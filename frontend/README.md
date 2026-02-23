@@ -13,10 +13,15 @@ Vite + React + TypeScript frontend for LLM Handbook MVP.
   - `/lessons/:lessonId/consultant`
   - `/profile`
 - Session bootstrap via `GET /api/auth/me`
+- MVP app shell in ChatGPT/Claude-like pattern:
+  - left sidebar = course tree (modules/lessons from `GET /api/progress`)
+  - main area = active workspace/chat
 - Dashboard progress + Continue CTA (`next_lesson_id`) + empty state
 - Modules/lessons statuses (`locked|available|completed`)
 - Locked lesson handling (`403 lesson_locked`)
 - Lesson workspace and AI modes:
+  - chat-first workspace (mode tabs + chat zone)
+  - lesson content moved to secondary readable block
   - Lecture: JSON fallback + SSE streaming render
   - Exam: start/finish, score/pass-fail
   - Consultant: JSON-only + gate by `consultant_unlocked`

@@ -32,17 +32,16 @@ export function ConsultantModePage() {
   }
 
   return (
-    <div>
-      <h3>Consultant</h3>
+    <div className="chat-panel">
       {messages.map((m, i) => (
-        <div key={i}>
+        <div key={i} className="msg msg-assistant">
           <p><b>Q:</b> {m.q}</p>
           <p><b>A:</b> {m.a}</p>
           <small>source: {m.source}</small>
         </div>
       ))}
       {error && <p className="error">{error}</p>}
-      <form onSubmit={ask}>
+      <form onSubmit={ask} className="composer">
         <input value={input} onChange={(e) => setInput(e.target.value)} maxLength={4000} />
         <button type="submit">Ask</button>
       </form>

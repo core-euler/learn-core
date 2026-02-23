@@ -1,19 +1,19 @@
-import { Link } from 'react-router-dom';
-import { useProgress } from '../hooks/useProgress';
+import { Link, useOutletContext } from 'react-router-dom';
+import type { AppShellContext } from '../layouts/AppLayout';
 
 export function DashboardPage() {
-  const { data, loading, error, reload } = useProgress();
+  const { progress, progressLoading, progressError, reloadProgress } = useOutletContext<AppShellContext>();
 
-  if (loading) return <p>Loading dashboard...</p>;
-  if (error) return <button onClick={reload}>Retry dashboard</button>;
-  if (!data) return <p>Нет данных</p>;
+  if (progressLoading) return <p>Loading dashboard...</p>;
+  if (progressError) return <button onClick={() => void reloadProgress()}>Retry dashboard</button>;
+  if (!progress) return <p>Нет данных</p>;
 
   return (
     <section>
       <h1>Dashboard</h1>
-      <p>Общий прогресс: {data.overall_percent}%</p>
-      {data.next_lesson_id ? (
-        <Link to={`/lessons/${data.next_lesson_id}/lecture`} className="btn">
+      <p>Общий прогресс: {progress.overall_percent}%</p>
+      {progress.next_lesson_id ? (
+        <Link to={`/lessons/${progress.next_lesson_id}/lecture`} className="primary-btn">
           Продолжить
         </Link>
       ) : (

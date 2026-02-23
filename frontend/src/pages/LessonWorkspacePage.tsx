@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, NavLink, Outlet, useParams } from 'react-router-dom';
+import { Link, NavLink, Outlet, useOutletContext, useParams } from 'react-router-dom';
 import { api } from '../api/client';
-import { useProgress } from '../hooks/useProgress';
+import type { AppShellContext } from '../layouts/AppLayout';
 import type { LessonContentResponse } from '../types/api';
 import { ApiError } from '../utils/http';
+
+type LessonWorkspaceContext = {
+  lessonId: string;
+};
 
 export function LessonWorkspacePage() {
   const { lessonId = '' } = useParams();
   const [content, setContent] = useState<LessonContentResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
-  const { data: progress } = useProgress();
+  const { progress } = useOutletContext<AppShellContext>();
 
   useEffect(() => {
     setError(null);
@@ -48,22 +52,26 @@ export function LessonWorkspacePage() {
   if (!content) return <p>Loading lesson...</p>;
 
   return (
-    <section>
-      <h1>{content.title}</h1>
-      {progressLabel && <p>Прогресс модуля: {progressLabel}</p>}
+    <section className="workspace">
+      <header className="workspace-head">
+        <h1>{content.title}</h1>
+        {progressLabel && <p className="muted">Прогресс модуля: {progressLabel}</p>}
+      </header>
+
       <div className="mode-tabs">
         <NavLink to="lecture">Lecture</NavLink>
         <NavLink to="exam">Exam</NavLink>
         <NavLink to="consultant">Consultant</NavLink>
       </div>
-      <div className="lesson-grid">
-        <article>
-          <pre>{content.content}</pre>
-        </article>
-        <aside>
-          <Outlet context={{ lessonId }} />
-        </aside>
+
+      <div className="workspace-chat-zone">
+        <Outlet context={{ lessonId } satisfies LessonWorkspaceContext} />
       </div>
+
+      <article className="lesson-material">
+        <h3>Материал урока</h3>
+        <pre>{content.content}</pre>
+      </article>
     </section>
   );
 }

@@ -1,6 +1,11 @@
 # Changelog
 
 ## 2026-02-23
+- Frontend shell приведён к продуктовой директиве chat-first layout (без дизайн-полировки):
+  - внедрён единый app shell с левой колонкой курса (модули/уроки) вместо топ-нав/истории,
+  - lesson workspace перестроен в chat-first паттерн (основная зона = чат режимов, материал урока как secondary block),
+  - сохранена backend-совместимость: используются существующие эндпоинты/контракты (`/api/progress`, lesson/chat APIs) без изменения серверного shape,
+  - обновлены frontend docs (`frontend/README.md`, `docs/frontend.md`).
 - Закрыт шаг 7.x Frontend MVP shell implementation:
   - создан новый `frontend/` (Vite + React + TypeScript) с app shell и маршрутизацией,
   - реализованы auth/public/private flow (`/login`, `/register`, session bootstrap, route guard, redirect),

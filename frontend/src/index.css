@@ -1,0 +1,16 @@
+:root { font-family: Inter, system-ui, sans-serif; color-scheme: dark; }
+body { margin: 0; background: #13161b; color: #f0f3f6; }
+a { color: #8ec5ff; margin-right: 12px; }
+.shell { min-height: 100vh; }
+.topbar { display:flex; align-items:center; justify-content:space-between; padding: 12px 18px; border-bottom: 1px solid #2a2f38; }
+.content { padding: 18px; }
+.auth { max-width: 360px; margin: 48px auto; }
+input, select, button { padding: 8px; margin: 6px 0; width: 100%; background: #1f2430; color: #f0f3f6; border: 1px solid #39414f; }
+button { cursor:pointer; }
+.error { color: #ff8f8f; }
+.empty, .muted { color: #a5adba; }
+.lesson-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.chat-box { max-height: 260px; overflow:auto; border: 1px solid #2a2f38; padding: 8px; }
+.mode-tabs a.active { font-weight: 700; }
+pre { white-space: pre-wrap; }
+@media (max-width: 900px){ .lesson-grid { grid-template-columns: 1fr; } }

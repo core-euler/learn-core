@@ -1,6 +1,18 @@
 # Changelog
 
 ## 2026-02-23
+- Закрыт шаг 7.x Frontend MVP shell implementation:
+  - создан новый `frontend/` (Vite + React + TypeScript) с app shell и маршрутизацией,
+  - реализованы auth/public/private flow (`/login`, `/register`, session bootstrap, route guard, redirect),
+  - реализован dashboard (`overall_percent`, Continue CTA через `next_lesson_id`, empty state),
+  - реализованы экраны модулей/уроков со статусами `locked|available|completed` и blocked UX для `lesson_locked`,
+  - реализован lesson workspace + AI mode shells:
+    - lecture: SSE stream рендер + JSON fallback,
+    - exam: start/finish + score/pass/fail,
+    - consultant: JSON-only + gate `consultant_unlocked` + `consultant_locked` fallback,
+  - добавлен UX mapping лимитов `minute_rate_limited` vs `daily_limit_exceeded`,
+  - добавлены минимальные frontend smoke tests (`frontend/src/test/app.smoke.test.tsx`, Vitest + RTL),
+  - обновлены docs: root `README.md`, `frontend/README.md`.
 - Закрыт шаг 5.2 Documentation sync / final release-readiness pass:
   - синхронизированы ключевые документы после 5.1: `README.md`, `docs/release-readiness.md`, `docs/changelog.md`, `docs/spec.md`, `docs/implementation-checklist.md`,
   - зафиксирован итоговый статус `MVP-ready for closed rollout` и явный residual known gaps list,

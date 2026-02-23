@@ -4,9 +4,10 @@ Documentation-first + implementation repository for LLM Handbook MVP.
 
 ## Current status (2026-02-23)
 - MVP backend scope implemented (auth/session, course/progress, AI modes via provider adapter + minimal RAG contract, SSE reliability, limits, Telegram auth callback).
+- MVP frontend app shell implemented (`frontend/`, Vite + React + TS): auth routes, protected app shell, dashboard, modules/lessons states, lesson workspace with lecture/exam/consultant flows, limits/error mapping.
 - Security hardening baseline закрыт: CSRF double-submit, test-route isolation, production KDF policy.
 - Alembic initialized with initial migration from current SQLAlchemy models.
-- Release test gate green: `52 passed` (`source .venv/bin/activate && pytest -q`, 2026-02-23).
+- Release test gate green: backend `52 passed` + frontend smoke (`vitest`, 2 passed).
 - Docker compose present (`backend + PostgreSQL`) с healthchecks.
 
 ## Repository map
@@ -24,6 +25,14 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
 pytest -q
+```
+
+## Frontend local shell
+```bash
+cd /home/claw/llm-handbook-mvp/frontend
+npm install
+npm run dev
+# optional: VITE_API_BASE_URL=http://localhost:8000 npm run dev
 ```
 
 ## Docker local stack

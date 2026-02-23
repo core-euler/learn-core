@@ -1,0 +1,89 @@
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { api } from '../api/client';
+import { streamLecture } from '../api/lectureStream';
+import { ApiError, mapLimitDetail } from '../utils/http';
+
+type Ctx = { lessonId: string };
+
+export function LectureModePage() {
+  const { lessonId } = useOutletContext<Ctx>();
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Array<{ role: string; text: string }>>([
+    { role: 'assistant', text: 'Добро пожаловать в лекцию. Задайте вопрос по материалу.' },
+  ]);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const [lastEventId, setLastEventId] = useState<string | undefined>();
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!input.trim()) return;
+    const text = input.trim();
+    const messageId = crypto.randomUUID();
+    setMessages((m) => [...m, { role: 'user', text }, { role: 'assistant', text: '' }]);
+    setInput('');
+    setIsStreaming(true);
+    setStreamError(null);
+
+    const updateAssistant = (chunk: string) => {
+      setMessages((prev) => {
+        const copy = [...prev];
+        const last = copy[copy.length - 1];
+        copy[copy.length - 1] = { ...last, text: `${last.text}${chunk}` };
+        return copy;
+      });
+    };
+
+    try {
+      await streamLecture({
+        lessonId,
+        message: text,
+        messageId,
+        lastEventId,
+        handlers: {
+          onChunk: (chunk) => updateAssistant(chunk),
+          onEventId: (id) => setLastEventId(id),
+          onDone: () => undefined,
+        },
+      });
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 429) {
+        setStreamError(mapLimitDetail(e.detail));
+      } else {
+        setStreamError('Ошибка потока. Нажмите повторить.');
+        try {
+          const fallback = await api.lectureJson(lessonId, text, messageId);
+          setMessages((prev) => {
+            const copy = [...prev];
+            copy[copy.length - 1] = { role: 'assistant', text: fallback.reply };
+            return copy;
+          });
+        } catch {
+          // keep recoverable error
+        }
+      }
+    } finally {
+      setIsStreaming(false);
+    }
+  }
+
+  return (
+    <div>
+      <h3>Lecture</h3>
+      <div className="chat-box">
+        {messages.map((m, i) => (
+          <p key={i}><b>{m.role}:</b> {m.text}</p>
+        ))}
+      </div>
+      {isStreaming && <p>Генерация ответа...</p>}
+      {streamError && <p className="error">{streamError}</p>}
+      <form onSubmit={submit}>
+        <input value={input} onChange={(e) => setInput(e.target.value)} maxLength={4000} placeholder="Ваш вопрос" />
+        <button type="submit" disabled={isStreaming}>Send</button>
+      </form>
+      <button onClick={() => api.completeLesson(lessonId)}>Завершить урок</button>
+    </div>
+  );
+}

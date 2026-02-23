@@ -58,10 +58,10 @@ _Last update: 2026-02-23_
 ## 3) AI Layer Maturation (P1)
 
 ### 3.1 Replace stubs with provider adapter
-- [ ] Ввести адаптер LLM provider (интерфейс + реализация по умолчанию).
-- [ ] Убрать stub-ответы в lecture/consultant/exam flows.
-- [ ] Добавить graceful fallback/timeout policy.
-- **DoD:** end-to-end сценарий с реальным провайдером проходит стабильно.
+- [x] Ввести адаптер LLM provider (интерфейс + реализация по умолчанию).
+- [x] Убрать stub-ответы в lecture/consultant/exam flows.
+- [x] Добавить graceful fallback/timeout policy.
+- **DoD:** backend flows переведены на adapter-контракт, fallback покрыт тестами (успех/таймаут/ошибка).
 
 ### 3.2 RAG contract (minimal)
 - [ ] Определить минимальный retrieval contract (chunk metadata, top-k, citations).

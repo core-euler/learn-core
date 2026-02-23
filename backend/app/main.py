@@ -27,7 +27,8 @@ from .usage_entities import UserUsage
 from .limits_service import check_and_increment_usage, DAILY_LIMIT
 from .rate_limit_entities import UserRateWindow
 from .minute_limit_service import check_minute_limit, MINUTE_LIMIT
-from .streaming import build_stub_stream
+from .streaming import build_text_stream
+from .llm_provider import DefaultLlmProviderAdapter, LlmPolicy, call_with_fallback
 from .env import is_test_mode, cookie_secure, cookie_samesite
 from .telegram_auth import validate_telegram_payload, resolve_bot_id
 from .config import settings
@@ -36,6 +37,12 @@ import os
 import json
 
 app = FastAPI(title="LLM Handbook MVP Backend")
+app.state.llm_adapter = DefaultLlmProviderAdapter()
+app.state.llm_policy = LlmPolicy(
+    timeout_seconds=settings.llm_timeout_seconds,
+    fallback_lecture=settings.llm_fallback_lecture,
+    fallback_consultant=settings.llm_fallback_consultant,
+)
 
 
 @app.get("/healthz")
@@ -489,15 +496,34 @@ def chat_lecture(payload: LectureRequest, request: Request, access_token: str | 
         raise HTTPException(status_code=403, detail=err)
 
     session = create_ai_session(db, user_id=user_id, mode='lecture', lesson_id=payload.lesson_id)
+    reply, is_fallback, reason = call_with_fallback(
+        fn=lambda: app.state.llm_adapter.lecture_reply(
+            lesson_id=payload.lesson_id,
+            message=payload.message,
+            message_id=payload.message_id,
+        ),
+        timeout_seconds=app.state.llm_policy.timeout_seconds,
+        fallback_text=app.state.llm_policy.fallback_lecture,
+    )
+
     db.add(AiMessage(session_id=session.id, role='user', content=payload.message, tokens=0))
-    db.add(AiMessage(session_id=session.id, role='assistant', content='lecture_stub_response', tokens=0))
+    db.add(AiMessage(session_id=session.id, role='assistant', content=reply.text, tokens=reply.tokens_used))
     db.commit()
 
     if 'text/event-stream' in (request.headers.get('accept') or ''):
         last_event_id = request.headers.get('last-event-id')
-        return StreamingResponse(build_stub_stream(payload.message_id, 'lecture_stub_response', last_event_id=last_event_id), media_type='text/event-stream')
+        return StreamingResponse(
+            build_text_stream(payload.message_id, reply.text, tokens_used=reply.tokens_used, last_event_id=last_event_id),
+            media_type='text/event-stream',
+        )
 
-    return {'session_id': session.id, 'reply': 'lecture_stub_response'}
+    return {
+        'session_id': session.id,
+        'reply': reply.text,
+        'provider': reply.provider,
+        'fallback_used': is_fallback,
+        'fallback_reason': reason,
+    }
 
 
 @app.post('/api/chat/exam/start')
@@ -521,25 +547,30 @@ def chat_exam_start(payload: ExamStartRequest, access_token: str | None = Cookie
     if not ok:
         raise HTTPException(status_code=403, detail=err)
 
-    rubric_data = {
-        'questions': [
-            {'id': 1, 'type': 'multiple_choice', 'text': 'Q1', 'options': ['A', 'B', 'C', 'D'], 'answer': 'A'},
-            {'id': 2, 'type': 'multiple_choice', 'text': 'Q2', 'options': ['A', 'B', 'C', 'D'], 'answer': 'B'},
-            {'id': 3, 'type': 'multiple_choice', 'text': 'Q3', 'options': ['A', 'B', 'C', 'D'], 'answer': 'C'},
-            {'id': 4, 'type': 'open', 'text': 'Q4', 'answer': 'open'},
-            {'id': 5, 'type': 'open', 'text': 'Q5', 'answer': 'open'},
-        ]
-    }
+    try:
+        exam_data = app.state.llm_adapter.build_exam(lesson_id=payload.lesson_id)
+        provider = exam_data.get('provider', 'default')
+        fallback_reason = 'ok'
+    except Exception:
+        exam_data = DefaultLlmProviderAdapter().build_exam(lesson_id=payload.lesson_id)
+        provider = 'fallback'
+        fallback_reason = 'error'
+    rubric_data = {'questions': exam_data.get('questions', [])}
+
     session = create_ai_session(db, user_id=user_id, mode='exam', lesson_id=payload.lesson_id, exam_rubric=json.dumps(rubric_data))
     return {
         'session_id': session.id,
         'questions': [
-            {'id': 1, 'type': 'multiple_choice', 'text': 'Q1', 'options': ['A', 'B', 'C', 'D']},
-            {'id': 2, 'type': 'multiple_choice', 'text': 'Q2', 'options': ['A', 'B', 'C', 'D']},
-            {'id': 3, 'type': 'multiple_choice', 'text': 'Q3', 'options': ['A', 'B', 'C', 'D']},
-            {'id': 4, 'type': 'open', 'text': 'Q4'},
-            {'id': 5, 'type': 'open', 'text': 'Q5'},
-        ]
+            {
+                'id': q['id'],
+                'type': q['type'],
+                'text': q['text'],
+                **({'options': q['options']} if q.get('options') else {}),
+            }
+            for q in rubric_data['questions']
+        ],
+        'provider': provider,
+        'fallback_reason': fallback_reason,
     }
 
 
@@ -640,10 +671,26 @@ def chat_consultant(payload: ConsultantRequest, access_token: str | None = Cooki
         raise HTTPException(status_code=403, detail=err)
 
     session = create_ai_session(db, user_id=user_id, mode='consultant', lesson_id=None)
+    reply, is_fallback, reason = call_with_fallback(
+        fn=lambda: app.state.llm_adapter.consultant_reply(
+            message=payload.message,
+            message_id=payload.message_id,
+        ),
+        timeout_seconds=app.state.llm_policy.timeout_seconds,
+        fallback_text=app.state.llm_policy.fallback_consultant,
+    )
+
     db.add(AiMessage(session_id=session.id, role='user', content=payload.message, tokens=0))
-    db.add(AiMessage(session_id=session.id, role='assistant', content='consultant_stub_response', tokens=0))
+    db.add(AiMessage(session_id=session.id, role='assistant', content=reply.text, tokens=reply.tokens_used))
     db.commit()
-    return {'session_id': session.id, 'reply': 'consultant_stub_response', 'source': 'opened_lessons_only'}
+    return {
+        'session_id': session.id,
+        'reply': reply.text,
+        'source': 'opened_lessons_only',
+        'provider': reply.provider,
+        'fallback_used': is_fallback,
+        'fallback_reason': reason,
+    }
 
 
 @app.post('/api/progress/lessons/{lesson_id}/complete')

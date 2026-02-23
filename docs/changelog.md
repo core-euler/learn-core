@@ -1,6 +1,14 @@
 # Changelog
 
 ## 2026-02-23
+- Закрыт шаг 3.1 Replace stubs with provider adapter:
+  - добавлен контракт `LlmProviderAdapter` и дефолтная реализация `DefaultLlmProviderAdapter` (`backend/app/llm_provider.py`),
+  - lecture/consultant/exam-start потоки переведены со stub-ответов на вызовы adapter,
+  - добавлена timeout/error fallback policy (`LLM_TIMEOUT_SECONDS`, fallback texts) для lecture/consultant,
+  - exam/start получил graceful fallback на default exam builder при ошибке провайдера,
+  - API-ответы дополнены признаками `provider`, `fallback_used`, `fallback_reason` (где применимо),
+  - streaming helper обобщён на `build_text_stream`.
+- Добавлены тесты на ключевые сценарии provider-layer (`backend/tests/test_ai_modes.py`): success path, timeout fallback, error fallback, exam fallback.
 - Закрыт шаг 2.3 Docker/ops polish:
   - добавлен backend health endpoint `GET /healthz` и healthcheck в `docker-compose.yml` + `backend/Dockerfile`,
   - postgres healthcheck в compose параметризован через `.env` переменные,

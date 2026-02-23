@@ -33,6 +33,20 @@ LLM Handbook — образовательная платформа с конте
 - Хранилище исходных Markdown-материалов курса.
 - LLM-провайдер для генерации ответов в трёх режимах.
 
+## Контракт LLM Provider Adapter
+AI-оркестрация backend работает через внутренний provider adapter контракт (без привязки к конкретному внешнему вендору).
+
+Минимальные операции контракта:
+- `lecture_reply(lesson_id, message, message_id) -> {text, tokens_used, provider}`
+- `consultant_reply(message, message_id) -> {text, tokens_used, provider}`
+- `build_exam(lesson_id) -> {questions[], provider}`
+
+Требования к runtime-политике:
+- Вызовы lecture/consultant выполняются с timeout policy (`LLM_TIMEOUT_SECONDS`).
+- При timeout/ошибке обязателен graceful fallback-ответ без 5xx для пользователя.
+- В exam/start при ошибке провайдера используется fallback на default exam builder.
+- API-ответы возвращают признак fallback (`fallback_used`/`fallback_reason`) для наблюдаемости и UI-state.
+
 ## Контракт контент-индекса (ingestion)
 Для production-safe загрузки контента используется единый индекс-файл `backend/content/index.json`.
 

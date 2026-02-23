@@ -1,4 +1,5 @@
 import os
+import time
 os.environ['APP_ENV'] = 'test'
 
 from fastapi.testclient import TestClient
@@ -43,6 +44,8 @@ def test_lecture_mode_requires_available_lesson():
     })
     assert ok.status_code == 200
     assert 'session_id' in ok.json()
+    assert ok.json()['fallback_used'] is False
+    assert ok.json()['fallback_reason'] == 'ok'
 
     denied = client.post('/api/chat/lecture', cookies=cookies, headers=csrf_headers(cookies), json={
         'lesson_id': locked_id,
@@ -111,6 +114,7 @@ def test_exam_start_finish_sessions_and_consultant_gate():
         'message_id': 'c2'
     })
     assert consultant_ok.status_code == 200
+    assert consultant_ok.json()['fallback_used'] is False
 
 
 def test_lecture_sse_stream_contract():
@@ -237,3 +241,110 @@ def test_chat_endpoints_reject_missing_or_invalid_csrf():
     invalid = client.post('/api/chat/exam/start', cookies=cookies, headers={'x-csrf-token': 'bad'}, json={'lesson_id': lesson_id})
     assert invalid.status_code == 403
     assert invalid.json()['detail'] == 'csrf_failed'
+
+
+def test_lecture_timeout_uses_fallback(monkeypatch):
+    cookies = setup_user()
+    db = SessionLocal()
+    try:
+        lesson_id = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalar_one().lesson_id
+    finally:
+        db.close()
+
+    old_timeout = app.state.llm_policy.timeout_seconds
+
+    class SlowAdapter:
+        def lecture_reply(self, *, lesson_id: str, message: str, message_id: str):
+            time.sleep(0.15)
+            return type('R', (), {'text': 'late', 'tokens_used': 1, 'provider': 'slow'})()
+
+        def consultant_reply(self, *, message: str, message_id: str):
+            return type('R', (), {'text': 'ok', 'tokens_used': 1, 'provider': 'slow'})()
+
+        def build_exam(self, *, lesson_id: str):
+            return {'questions': [], 'provider': 'slow'}
+
+    monkeypatch.setattr(app.state, 'llm_adapter', SlowAdapter())
+    app.state.llm_policy.timeout_seconds = 0.05
+
+    try:
+        r = client.post('/api/chat/lecture', cookies=cookies, headers=csrf_headers(cookies), json={
+            'lesson_id': lesson_id,
+            'session_id': None,
+            'message': 'hello',
+            'message_id': 'timeout-1'
+        })
+    finally:
+        app.state.llm_policy.timeout_seconds = old_timeout
+
+    assert r.status_code == 200
+    assert r.json()['fallback_used'] is True
+    assert r.json()['fallback_reason'] == 'timeout'
+    assert r.json()['provider'] == 'fallback'
+
+
+def test_consultant_error_uses_fallback(monkeypatch):
+    cookies = setup_user()
+
+    class ErrorAdapter:
+        def lecture_reply(self, *, lesson_id: str, message: str, message_id: str):
+            return type('R', (), {'text': 'ok', 'tokens_used': 1, 'provider': 'err'})()
+
+        def consultant_reply(self, *, message: str, message_id: str):
+            raise RuntimeError('boom')
+
+        def build_exam(self, *, lesson_id: str):
+            return {'questions': [], 'provider': 'err'}
+
+    monkeypatch.setattr(app.state, 'llm_adapter', ErrorAdapter())
+
+    # unlock consultant gate quickly
+    db = SessionLocal()
+    try:
+        available = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalar_one().lesson_id
+    finally:
+        db.close()
+    client.post(f'/api/progress/lessons/{available}/complete', cookies=cookies, headers=csrf_headers(cookies))
+    db = SessionLocal()
+    try:
+        next_id = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalars().first().lesson_id
+    finally:
+        db.close()
+    client.post(f'/api/progress/lessons/{next_id}/complete', cookies=cookies, headers=csrf_headers(cookies))
+
+    r = client.post('/api/chat/consultant', cookies=cookies, headers=csrf_headers(cookies), json={
+        'session_id': None,
+        'message': 'help',
+        'message_id': 'err-1'
+    })
+    assert r.status_code == 200
+    assert r.json()['fallback_used'] is True
+    assert r.json()['fallback_reason'] == 'error'
+    assert r.json()['provider'] == 'fallback'
+
+
+def test_exam_start_falls_back_to_default_adapter_on_provider_error(monkeypatch):
+    cookies = setup_user()
+    db = SessionLocal()
+    try:
+        lesson_id = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalar_one().lesson_id
+    finally:
+        db.close()
+
+    class ErrorExamAdapter:
+        def lecture_reply(self, *, lesson_id: str, message: str, message_id: str):
+            return type('R', (), {'text': 'ok', 'tokens_used': 1, 'provider': 'x'})()
+
+        def consultant_reply(self, *, message: str, message_id: str):
+            return type('R', (), {'text': 'ok', 'tokens_used': 1, 'provider': 'x'})()
+
+        def build_exam(self, *, lesson_id: str):
+            raise RuntimeError('exam failed')
+
+    monkeypatch.setattr(app.state, 'llm_adapter', ErrorExamAdapter())
+
+    r = client.post('/api/chat/exam/start', cookies=cookies, headers=csrf_headers(cookies), json={'lesson_id': lesson_id})
+    assert r.status_code == 200
+    assert r.json()['provider'] == 'fallback'
+    assert r.json()['fallback_reason'] == 'error'
+    assert len(r.json()['questions']) == 5

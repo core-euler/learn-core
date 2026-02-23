@@ -32,5 +32,16 @@ class Settings:
     # Content ingestion / validation
     content_validate_on_startup: bool = os.getenv("CONTENT_VALIDATE_ON_STARTUP", "true").lower() == "true"
 
+    # LLM adapter policy
+    llm_timeout_seconds: float = float(os.getenv("LLM_TIMEOUT_SECONDS", "8"))
+    llm_fallback_lecture: str = os.getenv(
+        "LLM_FALLBACK_LECTURE",
+        "Сервис AI временно недоступен. Попробуй ещё раз через минуту.",
+    )
+    llm_fallback_consultant: str = os.getenv(
+        "LLM_FALLBACK_CONSULTANT",
+        "Консультант временно недоступен. Попробуй повторить запрос позже.",
+    )
+
 
 settings = Settings()

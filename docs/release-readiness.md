@@ -3,7 +3,7 @@
 ## Current Backend Status Snapshot
 - Auth/session core: implemented
 - Course/progress core: implemented
-- AI scaffold + exam lifecycle: implemented (stub LLM responses)
+- AI provider adapter: implemented (lecture/consultant/exam wired через adapter + fallback policy)
 - Streaming: basic SSE for lecture (`chunk` + `done`)
 - Limits: daily + minute rate limits implemented
 
@@ -32,5 +32,5 @@
 - P2 E2E docs: defined
 
 ## Known Gaps Before Wider Rollout
-1. Replace stub AI replies with real LLM+RAG pipeline.
+1. Add RAG retrieval contract + retriever implementation behind adapter.
 2. Add SSE reconnection protocol beyond simple Last-Event-ID equality.

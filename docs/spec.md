@@ -121,6 +121,14 @@ Duplicate prevention инварианты:
 - Если подтверждён `done` (`Last-Event-ID == <message_id>:<done_seq>`), сервер не отправляет новых событий (пустой stream-body).
 - Повторные reconnect-запросы с одним и тем же `Last-Event-ID` идемпотентны по payload событий.
 
+## Frontend API compatibility baseline (step 4.1)
+- `Lecture` поддерживает два режима ответа: JSON и SSE (`Accept: text/event-stream`).
+- `Consultant` в текущем baseline работает как JSON-only endpoint (без SSE).
+- Ошибки лимитов в chat endpoint-ах нормализованы как `429` с `detail`:
+  - `daily_limit_exceeded`
+  - `minute_rate_limited`
+- Для фронтенда источником серверной truth-модели прогресса остаётся `GET /api/progress`.
+
 ## Карта модулей
 | Модуль | Документация | Описание |
 |---|---|---|
@@ -146,4 +154,4 @@ Duplicate prevention инварианты:
 
 ## Версия
 - Версия: 0.1-docs
-- Обновлено: 2026-02-22
+- Обновлено: 2026-02-23

@@ -7,6 +7,7 @@
 - Minimal RAG retrieval contract: implemented (retriever interface + stub index + lecture/consultant retrieval envelope with citations)
 - Streaming: SSE for lecture с reconnect/replay protocol (`id=<message_id>:<seq>`, partial resume, duplicate prevention)
 - Limits: daily + minute rate limits implemented
+- Frontend API compatibility baseline: aligned (response-shape pass 4.1, including lecture SSE vs consultant JSON distinction)
 
 ## Security/Hardening Checklist
 - [x] httpOnly auth cookies
@@ -26,11 +27,11 @@
 - [x] Production content ingestion flow (index-based) implemented
 
 ## Test Gates
-- Unit/API test suite: 47 passed (`source .venv/bin/activate && pytest -q`)
+- Unit/API test suite: 50 passed (`source .venv/bin/activate && pytest -q`)
 - Added ops smoke checks: `backend/tests/test_ops_smoke.py` (`/healthz` + `.env.example` required keys)
 - P0 E2E docs: defined
 - P1 E2E docs: defined
 - P2 E2E docs: defined
 
 ## Known Gaps Before Wider Rollout
-1. Frontend compatibility pass against finalized streaming/retrieval contracts (section 4.1 checklist).
+1. Minimal app shell readiness confirmation (checklist step 4.2): finalize MVP screen boundary and missing backend capabilities list (if any).

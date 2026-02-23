@@ -1,6 +1,12 @@
 # Changelog
 
 ## 2026-02-23
+- Закрыт шаг 4.1 API compatibility pass:
+  - сверены фактические backend response-shapes c frontend контрактами,
+  - устранён рассинхрон по consultant flow: зафиксировано, что текущий endpoint работает в JSON (не SSE),
+  - уточнены карты состояний и error-мэппинг лимитов (`detail=daily_limit_exceeded|minute_rate_limited`) в `docs/frontend-state-maps.md` и `tests/contracts/frontend.contract.md`,
+  - обновлены frontend/spec документы (`docs/frontend.md`, `docs/spec.md`) и release/checklist артефакты,
+  - добавлены API-совместимость тесты `backend/tests/test_frontend_api_compat.py` на ключевые фронтовые response envelopes.
 - Закрыт шаг 3.3 SSE reliability:
   - улучшен reconnect protocol: введены event-id формата `<message_id>:<seq>` вместо проверки только `Last-Event-ID == message_id`,
   - формализовано и реализовано partial stream resume: сервер отправляет только события с `sequence > last_ack_seq`,

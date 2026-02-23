@@ -79,9 +79,9 @@ _Last update: 2026-02-23_
 ## 4) Frontend Enablement (P1)
 
 ### 4.1 API compatibility pass
-- [ ] Сверить фактические backend response shapes с frontend-contract.
-- [ ] Закрыть рассинхроны в `docs/frontend-state-maps.md` и `tests/contracts/frontend.contract.md`.
-- **DoD:** фронт может интегрироваться без ad-hoc правок API «на лету».
+- [x] Сверить фактические backend response shapes с frontend-contract.
+- [x] Закрыть рассинхроны в `docs/frontend-state-maps.md` и `tests/contracts/frontend.contract.md`.
+- **DoD:** фронт может интегрироваться без ad-hoc правок API «на лету». ✅ Закрыто (2026-02-23).
 
 ### 4.2 Minimal app shell readiness
 - [ ] Подтвердить минимальный набор экранов/состояний для MVP.

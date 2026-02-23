@@ -93,9 +93,9 @@
 |---|---|---|---|
 | ConsultantGateCheck | Open consultant mode | Completed module prerequisite | ConsultantReady |
 | ConsultantGateCheck | Prerequisite unmet | Progress contract | ConsultantForbidden |
-| ConsultantReady | Send message | Consultant chat contract | ConsultantStreaming |
-| ConsultantStreaming | Done | SSE done event | ConsultantReady |
-| ConsultantStreaming | Error | SSE error | ConsultantRecoverableError |
+| ConsultantReady | Send message | Consultant chat contract (JSON response) | ConsultantRequesting |
+| ConsultantRequesting | Response received | 200 + consultant payload | ConsultantReady |
+| ConsultantRequesting | Error | 4xx/5xx transport/runtime | ConsultantRecoverableError |
 
 ---
 
@@ -103,8 +103,8 @@
 
 | State | Trigger | Dependency | Next |
 |---|---|---|---|
-| AnyChatIdle | Send message over daily quota | 429 quota contract | DailyLimitState |
-| AnyChatIdle | Send message over minute rate | Throttle contract | MinuteRateLimitState |
+| AnyChatIdle | Send message over daily quota | 429 `detail=daily_limit_exceeded` | DailyLimitState |
+| AnyChatIdle | Send message over minute rate | 429 `detail=minute_rate_limited` | MinuteRateLimitState |
 | DailyLimitState | Time passes to reset | Backend reset time reached | AnyChatIdle |
 | MinuteRateLimitState | Cooldown passes | Throttle window elapsed | AnyChatIdle |
 

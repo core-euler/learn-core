@@ -5,7 +5,7 @@
 - Course/progress core: implemented
 - AI provider adapter: implemented (lecture/consultant/exam wired через adapter + fallback policy)
 - Minimal RAG retrieval contract: implemented (retriever interface + stub index + lecture/consultant retrieval envelope with citations)
-- Streaming: basic SSE for lecture (`chunk` + `done`)
+- Streaming: SSE for lecture с reconnect/replay protocol (`id=<message_id>:<seq>`, partial resume, duplicate prevention)
 - Limits: daily + minute rate limits implemented
 
 ## Security/Hardening Checklist
@@ -26,11 +26,11 @@
 - [x] Production content ingestion flow (index-based) implemented
 
 ## Test Gates
-- Unit/API test suite: 39 passed (`source .venv/bin/activate && pytest -q`)
+- Unit/API test suite: 47 passed (`source .venv/bin/activate && pytest -q`)
 - Added ops smoke checks: `backend/tests/test_ops_smoke.py` (`/healthz` + `.env.example` required keys)
 - P0 E2E docs: defined
 - P1 E2E docs: defined
 - P2 E2E docs: defined
 
 ## Known Gaps Before Wider Rollout
-1. Add SSE reconnection protocol beyond simple Last-Event-ID equality.
+1. Frontend compatibility pass against finalized streaming/retrieval contracts (section 4.1 checklist).

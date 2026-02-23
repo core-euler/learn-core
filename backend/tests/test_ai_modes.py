@@ -1,3 +1,4 @@
+import json
 import os
 import time
 os.environ['APP_ENV'] = 'test'
@@ -17,6 +18,21 @@ client = TestClient(app)
 def csrf_headers(cookies):
     token = cookies.get('csrf_token') if cookies else None
     return {'x-csrf-token': token} if token else {}
+
+
+def parse_sse_events(raw: str):
+    events = []
+    for block in [b for b in raw.strip().split('\n\n') if b.strip()]:
+        item = {}
+        for line in block.splitlines():
+            if line.startswith('id: '):
+                item['id'] = line[len('id: '):]
+            elif line.startswith('event: '):
+                item['event'] = line[len('event: '):]
+            elif line.startswith('data: '):
+                item['data'] = json.loads(line[len('data: '):])
+        events.append(item)
+    return events
 
 
 def setup_user():
@@ -136,10 +152,15 @@ def test_lecture_sse_stream_contract():
     })
     assert r.status_code == 200
     assert 'text/event-stream' in r.headers.get('content-type', '')
-    body = r.text
-    assert '"type": "chunk"' in body
-    assert '"type": "done"' in body
 
+    events = parse_sse_events(r.text)
+    assert len(events) >= 2
+    assert all(e.get('id') for e in events)
+    assert events[-1]['event'] == 'done'
+    assert events[-1]['data']['type'] == 'done'
+    assert events[-1]['data']['event_id'] == events[-1]['id']
+
+    # Legacy reconnect marker (message_id only): chunks are not duplicated, done is replayed.
     r2 = client.post('/api/chat/lecture', cookies=cookies, headers={'accept': 'text/event-stream', 'last-event-id': 'stream-1', **csrf_headers(cookies)}, json={
         'lesson_id': lesson_id,
         'session_id': None,
@@ -147,9 +168,88 @@ def test_lecture_sse_stream_contract():
         'message_id': 'stream-1'
     })
     assert r2.status_code == 200
-    body2 = r2.text
-    assert '"type": "chunk"' not in body2
-    assert '"type": "done"' in body2
+    events2 = parse_sse_events(r2.text)
+    assert len(events2) == 1
+    assert events2[0]['event'] == 'done'
+
+
+def test_lecture_sse_reconnect_partial_resume_from_event_id():
+    cookies = setup_user()
+
+    db = SessionLocal()
+    try:
+        lesson_id = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalar_one().lesson_id
+    finally:
+        db.close()
+
+    message = 'partial resume stream payload'
+    message_id = 'stream-resume-1'
+
+    initial = client.post('/api/chat/lecture', cookies=cookies, headers={'accept': 'text/event-stream', **csrf_headers(cookies)}, json={
+        'lesson_id': lesson_id,
+        'session_id': None,
+        'message': message,
+        'message_id': message_id,
+    })
+    assert initial.status_code == 200
+    initial_events = parse_sse_events(initial.text)
+    chunk_events = [e for e in initial_events if e['event'] == 'chunk']
+    assert len(chunk_events) >= 3
+
+    reconnect = client.post('/api/chat/lecture', cookies=cookies, headers={
+        'accept': 'text/event-stream',
+        'last-event-id': f'{message_id}:2',
+        **csrf_headers(cookies),
+    }, json={
+        'lesson_id': lesson_id,
+        'session_id': None,
+        'message': message,
+        'message_id': message_id,
+    })
+    assert reconnect.status_code == 200
+    reconnect_events = parse_sse_events(reconnect.text)
+
+    reconnect_chunk_sequences = [e['data']['sequence'] for e in reconnect_events if e['event'] == 'chunk']
+    assert reconnect_chunk_sequences
+    assert min(reconnect_chunk_sequences) == 3
+    assert 1 not in reconnect_chunk_sequences
+    assert 2 not in reconnect_chunk_sequences
+    assert reconnect_events[-1]['event'] == 'done'
+
+
+def test_lecture_sse_duplicate_prevention_when_done_already_acknowledged():
+    cookies = setup_user()
+
+    db = SessionLocal()
+    try:
+        lesson_id = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalar_one().lesson_id
+    finally:
+        db.close()
+
+    message_id = 'stream-done-acked'
+    r = client.post('/api/chat/lecture', cookies=cookies, headers={'accept': 'text/event-stream', **csrf_headers(cookies)}, json={
+        'lesson_id': lesson_id,
+        'session_id': None,
+        'message': 'done acked check',
+        'message_id': message_id,
+    })
+    assert r.status_code == 200
+    events = parse_sse_events(r.text)
+    done_id = [e['id'] for e in events if e['event'] == 'done'][0]
+
+    reconnect = client.post('/api/chat/lecture', cookies=cookies, headers={
+        'accept': 'text/event-stream',
+        'last-event-id': done_id,
+        **csrf_headers(cookies),
+    }, json={
+        'lesson_id': lesson_id,
+        'session_id': None,
+        'message': 'done acked check',
+        'message_id': message_id,
+    })
+    assert reconnect.status_code == 200
+    reconnect_events = parse_sse_events(reconnect.text)
+    assert reconnect_events == []
 
 
 def test_daily_limit_enforced_on_chat_requests():

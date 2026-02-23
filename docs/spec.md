@@ -98,6 +98,29 @@ AI-оркестрация backend работает через внутренни
 
 Валидация выполняется fail-fast (на старте backend при включённом флаге) и может запускаться отдельной командой в CI.
 
+## SSE reconnect/reliability contract (R11)
+
+Для `POST /api/chat/lecture` в режиме `Accept: text/event-stream` фиксируется следующий контракт восстановления потока.
+
+Формат событий:
+- Каждое SSE-событие содержит `id`, `event`, `data`.
+- `event` ∈ `{chunk, done}`.
+- `id` формата `<message_id>:<seq>`.
+  - `seq` начинается с `1` для первого `chunk`.
+  - terminal `done` имеет `seq = chunks_count + 1`.
+- В `data` дублируются `type`, `sequence`, `event_id`, `message_id` (и `content` для chunk, `tokens_used` для done).
+
+Reconnect/Resume поведение:
+- Клиент передаёт `Last-Event-ID`.
+- Если `Last-Event-ID` соответствует `<message_id>:<seq>`, сервер считает подтверждёнными все события `<= seq` и отправляет только события с `sequence > seq`.
+- Legacy-совместимость: `Last-Event-ID == <message_id>` трактуется как «все chunk подтверждены» (replay только `done`).
+- Если `Last-Event-ID` отсутствует/невалиден/относится к другому `message_id`, поток начинается с первого chunk.
+
+Duplicate prevention инварианты:
+- При корректном `Last-Event-ID` сервер не переотправляет уже подтверждённые `chunk` события.
+- Если подтверждён `done` (`Last-Event-ID == <message_id>:<done_seq>`), сервер не отправляет новых событий (пустой stream-body).
+- Повторные reconnect-запросы с одним и тем же `Last-Event-ID` идемпотентны по payload событий.
+
 ## Карта модулей
 | Модуль | Документация | Описание |
 |---|---|---|

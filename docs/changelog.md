@@ -1,6 +1,14 @@
 # Changelog
 
 ## 2026-02-23
+- Закрыт шаг 3.3 SSE reliability:
+  - улучшен reconnect protocol: введены event-id формата `<message_id>:<seq>` вместо проверки только `Last-Event-ID == message_id`,
+  - формализовано и реализовано partial stream resume: сервер отправляет только события с `sequence > last_ack_seq`,
+  - реализован duplicate prevention инвариант: при подтверждённом `done` stream не переотправляет данные (пустой body),
+  - сохранена backward compatibility для legacy marker `Last-Event-ID == <message_id>` (replay только `done`),
+  - добавлены тесты на SSE reconnect/duplicate prevention/partial resume в `backend/tests/test_ai_modes.py`,
+  - обновлён контракт в `docs/spec.md`,
+  - test gate: `47 passed` (`source .venv/bin/activate && pytest -q`).
 - Закрыт шаг 3.2 RAG contract (minimal):
   - формализован retrieval-контракт (`ChunkMetadata`, `RetrievalQuery`, `RetrievedChunk`, `Citation`, `RetrievalResult`) в `backend/app/retrieval.py`,
   - добавлены `Retriever` интерфейс, `StubChunkIndex` и `StubRetriever` (лёгкая in-memory заглушка без тяжёлой индексации),

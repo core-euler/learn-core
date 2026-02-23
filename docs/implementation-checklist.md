@@ -70,9 +70,9 @@ _Last update: 2026-02-23_
 - **DoD:** архитектура RAG формализована и готова к инкрементной реализации. ✅ Закрыто (2026-02-23).
 
 ### 3.3 SSE reliability
-- [ ] Улучшить reconnect протокол (не только Last-Event-ID equality).
-- [ ] Протестировать сценарии: reconnect, duplicate prevention, partial stream resume.
-- **DoD:** поток устойчив к обрывам, поведение формализовано в тестах.
+- [x] Улучшить reconnect протокол (не только Last-Event-ID equality).
+- [x] Протестировать сценарии: reconnect, duplicate prevention, partial stream resume.
+- **DoD:** поток устойчив к обрывам, поведение формализовано в тестах. ✅ Закрыто (2026-02-23).
 
 ---
 

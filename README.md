@@ -4,12 +4,13 @@ Documentation-first + implementation repository for LLM Handbook MVP.
 
 ## Current status (2026-02-23)
 - Backend MVP core implemented (auth/session, course/progress, AI mode scaffold, limits, Telegram auth callback).
-- Test suite green: **22 passed** (`pytest -q`).
+- Alembic initialized with initial migration from current SQLAlchemy models.
+- Test suite green: run `pytest -q`.
 - Docker compose present (`backend + PostgreSQL`).
-- Core docs/specs/checklists populated in `docs/` and `tests/`.
 
 ## Repository map
 - `backend/` — FastAPI backend implementation + tests
+- `alembic/` — DB migrations
 - `docs/` — product/architecture/spec documentation and rollout notes
 - `tests/` — contracts/checklists/traceability/e2e strategy docs
 - `docker-compose.yml` — local stack bootstrap
@@ -22,6 +23,17 @@ source .venv/bin/activate
 pip install -e '.[dev]'
 pytest -q
 ```
+
+## DB migrations (Alembic)
+```bash
+# uses DATABASE_URL if set, otherwise sqlite:///./backend_dev.db
+alembic upgrade head
+alembic downgrade base
+alembic current
+alembic history
+```
+
+For clean PostgreSQL bootstrap, see `docs/runbook.md`.
 
 ## Next focus
 See: `docs/implementation-checklist.md` and `docs/release-readiness.md`.

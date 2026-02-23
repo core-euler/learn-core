@@ -35,10 +35,10 @@ _Last update: 2026-02-23_
 ## 2) Data & Infra (P0/P1)
 
 ### 2.1 Alembic migrations
-- [ ] Инициализировать Alembic.
-- [ ] Создать initial migration по текущим моделям.
-- [ ] Добавить команду миграций в README/операционный чеклист.
-- **DoD:** чистый подъём БД через миграции в пустой Postgres.
+- [x] Инициализировать Alembic.
+- [x] Создать initial migration по текущим моделям.
+- [x] Добавить команду миграций в README/операционный чеклист.
+- **DoD:** чистый подъём БД через миграции в пустой Postgres (команды и smoke-check добавлены; postgres smoke запускается при `TEST_POSTGRES_DATABASE_URL`).
 
 ### 2.2 Content ingestion flow (production-safe)
 - [ ] Ввести индекс-контракт контента (версия, module/lesson map).

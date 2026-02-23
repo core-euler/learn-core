@@ -1,6 +1,12 @@
 # Changelog
 
 ## 2026-02-23
+- Инициализирован Alembic (`alembic/`, `alembic.ini`) и настроен на metadata SQLAlchemy моделей backend.
+- Добавлена initial migration `f6ae674d7b9f_initial_schema.py` по текущим моделям.
+- Добавлен migration smoke-check `backend/tests/test_alembic_migrations.py` (upgrade/downgrade на чистой БД + optional PostgreSQL smoke через `TEST_POSTGRES_DATABASE_URL`).
+- Обновлены инструкции миграций в `README.md`, `backend/README.md`, добавлен `docs/runbook.md` с командами чистого подъёма.
+- Обновлены `docs/release-readiness.md` и `docs/implementation-checklist.md` по статусу 2.1.
+- Test gate: `33 passed` (`pytest -q`).
 - Внедрена production password/KDF policy: `scrypt`/`argon2id` с параметрами через env (`PASSWORD_*`), новый формат хранения hash и runtime-выбор алгоритма.
 - Добавлена migration-in-place стратегия для legacy `salt$sha256`: успешный login автоматически rehash-ит пароль в текущую policy (управляется `PASSWORD_LEGACY_ACCEPT` и `PASSWORD_MIGRATE_ON_LOGIN`).
 - Добавлены тесты `test_password_kdf_policy.py` на: новый scrypt hash, argon2id hash, миграцию legacy hash при логине.

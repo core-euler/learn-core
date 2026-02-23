@@ -18,11 +18,11 @@
 ## Data/Infra Checklist
 - [x] Docker compose with PostgreSQL + backend
 - [x] SQLAlchemy persistence in place
-- [ ] Alembic migrations introduced
+- [x] Alembic migrations introduced (initial revision + runbook + smoke-test)
 - [ ] Production content ingestion flow (index-based) implemented
 
 ## Test Gates
-- Unit/API test suite: 31 passed (`.venv/bin/pytest -q`)
+- Unit/API test suite: 33 passed (`.venv/bin/pytest -q`)
 - P0 E2E docs: defined
 - P1 E2E docs: defined
 - P2 E2E docs: defined

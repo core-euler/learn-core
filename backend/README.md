@@ -11,6 +11,7 @@
   - `POST /api/auth/logout-all`
   - `GET /api/auth/me`
 - SQLAlchemy persistence слой для пользователей и сессий.
+- Alembic migrations (`alembic upgrade head`, initial migration создан).
 - Docker Compose окружение с PostgreSQL (`docker-compose.yml`).
 - Покрытие тестами phase-2 auth/session контрактов (`backend/tests/test_auth_sessions.py`).
 - Начат phase-3: course/progress сущности и тесты (`backend/tests/test_course_progress.py`).
@@ -30,4 +31,12 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
 pytest -q
+```
+
+## Миграции
+```bash
+# по умолчанию sqlite:///./backend_dev.db
+alembic upgrade head
+alembic downgrade base
+alembic current
 ```

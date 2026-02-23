@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from .schemas import RegisterRequest, LoginRequest, RegisterResponse, UserOut
 from .security import (
     hash_password,
-    verify_password,
+    verify_and_maybe_rehash_password,
     create_access_token,
     make_refresh_token,
     hash_refresh_token,
@@ -144,8 +144,15 @@ def auth_telegram_callback(
 @app.post("/api/auth/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
-    if not user or not user.password_hash or not verify_password(payload.password, user.password_hash):
+    if not user or not user.password_hash:
         raise HTTPException(status_code=401, detail="invalid_credentials")
+
+    ok, replacement_hash = verify_and_maybe_rehash_password(payload.password, user.password_hash)
+    if not ok:
+        raise HTTPException(status_code=401, detail="invalid_credentials")
+    if replacement_hash:
+        user.password_hash = replacement_hash
+        db.commit()
 
     access = create_access_token(user.id)
     refresh = make_refresh_token()

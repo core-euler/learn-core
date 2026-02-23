@@ -20,9 +20,9 @@ _Last update: 2026-02-23_
 - **DoD:** state-changing запросы без CSRF режутся стабильно, тесты зелёные.
 
 ### 1.2 Password/KDF policy для production
-- [ ] Зафиксировать и внедрить production policy (argon2id/scrypt + параметры).
-- [ ] Документировать migration strategy для существующих хешей.
-- [ ] Добавить тесты на верификацию старых/новых хешей (если migration-in-place).
+- [x] Зафиксировать и внедрить production policy (argon2id/scrypt + параметры).
+- [x] Документировать migration strategy для существующих хешей.
+- [x] Добавить тесты на верификацию старых/новых хешей (если migration-in-place).
 - **DoD:** политика описана в docs + покрыта тестами + включается через env/config.
 
 ### 1.3 Test routes isolation audit

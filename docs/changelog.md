@@ -1,6 +1,10 @@
 # Changelog
 
 ## 2026-02-23
+- Внедрена production password/KDF policy: `scrypt`/`argon2id` с параметрами через env (`PASSWORD_*`), новый формат хранения hash и runtime-выбор алгоритма.
+- Добавлена migration-in-place стратегия для legacy `salt$sha256`: успешный login автоматически rehash-ит пароль в текущую policy (управляется `PASSWORD_LEGACY_ACCEPT` и `PASSWORD_MIGRATE_ON_LOGIN`).
+- Добавлены тесты `test_password_kdf_policy.py` на: новый scrypt hash, argon2id hash, миграцию legacy hash при логине.
+- Обновлены `docs/password-kdf-policy.md` и `docs/release-readiness.md` по фактическому статусу (test gate: 31 passed).
 - Внедрён CSRF double-submit (cookie `csrf_token` + header `X-CSRF-Token`) для state-changing endpoint-ов: `auth/refresh|logout|logout-all`, `chat/*` POST, `progress/.../complete`.
 - Логин/рефреш/Telegram callback теперь переиздают CSRF cookie; logout/logout-all удаляют CSRF cookie.
 - Добавлены позитивные/негативные тесты CSRF (auth/chat/progress).

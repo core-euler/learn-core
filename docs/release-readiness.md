@@ -13,7 +13,7 @@
 - [x] Test-only endpoints restricted to `APP_ENV=test` (+ smoke in prod-like env)
 - [x] CSRF protection (double-submit) for state-changing endpoints
 - [x] Telegram OAuth cryptographic validation: HMAC + freshness + bot-id binding
-- [ ] Password hashing policy upgrade for production KDF
+- [x] Password hashing policy upgrade for production KDF (`scrypt`/`argon2id`, env-configurable, login-time migration)
 
 ## Data/Infra Checklist
 - [x] Docker compose with PostgreSQL + backend
@@ -22,7 +22,7 @@
 - [ ] Production content ingestion flow (index-based) implemented
 
 ## Test Gates
-- Unit/API test suite: 28 passed (`.venv/bin/pytest -q`)
+- Unit/API test suite: 31 passed (`.venv/bin/pytest -q`)
 - P0 E2E docs: defined
 - P1 E2E docs: defined
 - P2 E2E docs: defined
@@ -30,4 +30,3 @@
 ## Known Gaps Before Wider Rollout
 1. Replace stub AI replies with real LLM+RAG pipeline.
 2. Add SSE reconnection protocol beyond simple Last-Event-ID equality.
-3. Add production-grade password/KDF policy and migration path.

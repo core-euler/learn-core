@@ -1,6 +1,12 @@
 # Changelog
 
 ## 2026-02-23
+- Закрыт шаг 3.2 RAG contract (minimal):
+  - формализован retrieval-контракт (`ChunkMetadata`, `RetrievalQuery`, `RetrievedChunk`, `Citation`, `RetrievalResult`) в `backend/app/retrieval.py`,
+  - добавлены `Retriever` интерфейс, `StubChunkIndex` и `StubRetriever` (лёгкая in-memory заглушка без тяжёлой индексации),
+  - AI flow (`/api/chat/lecture`, `/api/chat/consultant`) интегрирован с retriever на контрактном уровне,
+  - API-ответы lecture/consultant расширены блоком `retrieval` (`top_k`, `chunks_found`, `citations`),
+  - добавлены тесты на контракт и поведение заглушки (`backend/tests/test_retrieval_contract.py`) и интеграционный контракт в AI flow (`test_lecture_response_exposes_retrieval_contract`).
 - Закрыт шаг 3.1 Replace stubs with provider adapter:
   - добавлен контракт `LlmProviderAdapter` и дефолтная реализация `DefaultLlmProviderAdapter` (`backend/app/llm_provider.py`),
   - lecture/consultant/exam-start потоки переведены со stub-ответов на вызовы adapter,

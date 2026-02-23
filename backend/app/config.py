@@ -43,5 +43,8 @@ class Settings:
         "Консультант временно недоступен. Попробуй повторить запрос позже.",
     )
 
+    # Minimal RAG contract policy
+    rag_top_k: int = int(os.getenv("RAG_TOP_K", "3"))
+
 
 settings = Settings()

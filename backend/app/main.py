@@ -29,6 +29,7 @@ from .rate_limit_entities import UserRateWindow
 from .minute_limit_service import check_minute_limit, MINUTE_LIMIT
 from .streaming import build_text_stream
 from .llm_provider import DefaultLlmProviderAdapter, LlmPolicy, call_with_fallback
+from .retrieval import RetrievalQuery, StubChunkIndex, StubRetriever
 from .env import is_test_mode, cookie_secure, cookie_samesite
 from .telegram_auth import validate_telegram_payload, resolve_bot_id
 from .config import settings
@@ -38,11 +39,13 @@ import json
 
 app = FastAPI(title="LLM Handbook MVP Backend")
 app.state.llm_adapter = DefaultLlmProviderAdapter()
+app.state.retriever = StubRetriever(StubChunkIndex.empty())
 app.state.llm_policy = LlmPolicy(
     timeout_seconds=settings.llm_timeout_seconds,
     fallback_lecture=settings.llm_fallback_lecture,
     fallback_consultant=settings.llm_fallback_consultant,
 )
+app.state.rag_top_k = settings.rag_top_k
 
 
 @app.get("/healthz")
@@ -496,6 +499,16 @@ def chat_lecture(payload: LectureRequest, request: Request, access_token: str | 
         raise HTTPException(status_code=403, detail=err)
 
     session = create_ai_session(db, user_id=user_id, mode='lecture', lesson_id=payload.lesson_id)
+    retrieval = app.state.retriever.retrieve(
+        RetrievalQuery(
+            user_id=user_id,
+            mode='lecture',
+            lesson_id=payload.lesson_id,
+            message=payload.message,
+            top_k=app.state.rag_top_k,
+        )
+    )
+
     reply, is_fallback, reason = call_with_fallback(
         fn=lambda: app.state.llm_adapter.lecture_reply(
             lesson_id=payload.lesson_id,
@@ -523,6 +536,11 @@ def chat_lecture(payload: LectureRequest, request: Request, access_token: str | 
         'provider': reply.provider,
         'fallback_used': is_fallback,
         'fallback_reason': reason,
+        'retrieval': {
+            'top_k': app.state.rag_top_k,
+            'chunks_found': len(retrieval.chunks),
+            'citations': [c.__dict__ for c in retrieval.citations],
+        },
     }
 
 
@@ -671,6 +689,16 @@ def chat_consultant(payload: ConsultantRequest, access_token: str | None = Cooki
         raise HTTPException(status_code=403, detail=err)
 
     session = create_ai_session(db, user_id=user_id, mode='consultant', lesson_id=None)
+    retrieval = app.state.retriever.retrieve(
+        RetrievalQuery(
+            user_id=user_id,
+            mode='consultant',
+            lesson_id=None,
+            message=payload.message,
+            top_k=app.state.rag_top_k,
+        )
+    )
+
     reply, is_fallback, reason = call_with_fallback(
         fn=lambda: app.state.llm_adapter.consultant_reply(
             message=payload.message,
@@ -690,6 +718,11 @@ def chat_consultant(payload: ConsultantRequest, access_token: str | None = Cooki
         'provider': reply.provider,
         'fallback_used': is_fallback,
         'fallback_reason': reason,
+        'retrieval': {
+            'top_k': app.state.rag_top_k,
+            'chunks_found': len(retrieval.chunks),
+            'citations': [c.__dict__ for c in retrieval.citations],
+        },
     }
 
 

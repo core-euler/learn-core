@@ -47,6 +47,39 @@ AI-оркестрация backend работает через внутренни
 - В exam/start при ошибке провайдера используется fallback на default exam builder.
 - API-ответы возвращают признак fallback (`fallback_used`/`fallback_reason`) для наблюдаемости и UI-state.
 
+## Минимальный RAG retrieval contract
+
+Для AI-режимов вводится минимальный внутренний retrieval-контракт, независимый от конкретной реализации индекса.
+
+Вход retrieval-запроса:
+- `user_id`: идентификатор пользователя (для будущих ACL/personalization политик).
+- `mode`: `lecture | consultant | exam`.
+- `lesson_id?`: обязателен для lesson-scoped режимов (`lecture`, `exam`), опционален для `consultant`.
+- `message`: пользовательский текст запроса.
+- `top_k`: верхняя граница числа возвращаемых чанков (`k > 0`).
+
+Контракт retrieval-результата:
+- `chunks[]`: список найденных чанков (не более `top_k`).
+  - `metadata`: `{chunk_id, module_id, lesson_id, source_path, start_char, end_char}`.
+  - `text`: текст чанка (или excerpt).
+  - `score`: релевантность (float, чем выше — тем релевантнее).
+- `citations[]`: нормализованные ссылки для UI/API.
+  - минимум: `{chunk_id, lesson_id, source_path, quote}`.
+
+Минимальные инварианты:
+- `len(chunks) <= top_k`.
+- Для `lecture`/`exam` retrieval ограничен текущим `lesson_id`.
+- `citations` строятся из фактически возвращённых `chunks`.
+- Пустой результат допустим (`chunks=[]`, `citations=[]`) и не является ошибкой.
+
+Интеграция в AI flow (контрактный уровень):
+- Перед генерацией ответа backend вызывает retriever и получает retrieval-result.
+- API-ответ lecture/consultant содержит блок `retrieval`:
+  - `top_k`,
+  - `chunks_found`,
+  - `citations[]`.
+- Текущая реализация допускает stub-индекс/stub-retriever; контракт сохраняется неизменным при последующей замене на production retrieval.
+
 ## Контракт контент-индекса (ingestion)
 Для production-safe загрузки контента используется единый индекс-файл `backend/content/index.json`.
 

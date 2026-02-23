@@ -8,6 +8,7 @@ from sqlalchemy import select
 from backend.app.main import app
 from backend.app.database import SessionLocal
 from backend.app.course_entities import UserLessonProgress
+from backend.app.retrieval import Citation, RetrievalResult
 
 
 client = TestClient(app)
@@ -348,3 +349,36 @@ def test_exam_start_falls_back_to_default_adapter_on_provider_error(monkeypatch)
     assert r.json()['provider'] == 'fallback'
     assert r.json()['fallback_reason'] == 'error'
     assert len(r.json()['questions']) == 5
+
+
+def test_lecture_response_exposes_retrieval_contract(monkeypatch):
+    cookies = setup_user()
+    db = SessionLocal()
+    try:
+        lesson_id = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalar_one().lesson_id
+    finally:
+        db.close()
+
+    class FakeRetriever:
+        def retrieve(self, query):
+            assert query.top_k == app.state.rag_top_k
+            assert query.lesson_id == lesson_id
+            return RetrievalResult(
+                chunks=[],
+                citations=[Citation(chunk_id='ch-1', lesson_id=lesson_id, source_path='content/m1/l1.md', quote='quote')],
+            )
+
+    monkeypatch.setattr(app.state, 'retriever', FakeRetriever())
+
+    r = client.post('/api/chat/lecture', cookies=cookies, headers=csrf_headers(cookies), json={
+        'lesson_id': lesson_id,
+        'session_id': None,
+        'message': 'hello',
+        'message_id': 'rag-1'
+    })
+    assert r.status_code == 200
+    body = r.json()
+    assert body['retrieval']['top_k'] == app.state.rag_top_k
+    assert body['retrieval']['chunks_found'] == 0
+    assert len(body['retrieval']['citations']) == 1
+    assert body['retrieval']['citations'][0]['chunk_id'] == 'ch-1'

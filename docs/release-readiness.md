@@ -4,6 +4,7 @@
 - Auth/session core: implemented
 - Course/progress core: implemented
 - AI provider adapter: implemented (lecture/consultant/exam wired через adapter + fallback policy)
+- Minimal RAG retrieval contract: implemented (retriever interface + stub index + lecture/consultant retrieval envelope with citations)
 - Streaming: basic SSE for lecture (`chunk` + `done`)
 - Limits: daily + minute rate limits implemented
 
@@ -32,5 +33,4 @@
 - P2 E2E docs: defined
 
 ## Known Gaps Before Wider Rollout
-1. Add RAG retrieval contract + retriever implementation behind adapter.
-2. Add SSE reconnection protocol beyond simple Last-Event-ID equality.
+1. Add SSE reconnection protocol beyond simple Last-Event-ID equality.

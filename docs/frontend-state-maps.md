@@ -30,8 +30,8 @@
 |---|---|---|---|
 | DashboardLoading | Initial load | `/api/progress` + modules summary | DashboardReady |
 | DashboardLoading | API failure | Network/server error | DashboardError |
-| DashboardReady | Click Continue | First available lesson exists | LessonRouteTransition |
-| DashboardReady | No available lessons | Progress domain state | DashboardEmpty |
+| DashboardReady | Click Continue | `/api/progress.next_lesson_id != null` | LessonRouteTransition |
+| DashboardReady | No available lessons | `/api/progress.next_lesson_id == null` | DashboardEmpty |
 | DashboardError | Retry | API recovers | DashboardLoading |
 
 ---
@@ -91,8 +91,8 @@
 
 | State | Trigger | Dependency | Next |
 |---|---|---|---|
-| ConsultantGateCheck | Open consultant mode | Completed module prerequisite | ConsultantReady |
-| ConsultantGateCheck | Prerequisite unmet | Progress contract | ConsultantForbidden |
+| ConsultantGateCheck | Open consultant mode | `/api/progress.consultant_unlocked == true` | ConsultantReady |
+| ConsultantGateCheck | Prerequisite unmet | `/api/progress.consultant_unlocked == false` | ConsultantForbidden |
 | ConsultantReady | Send message | Consultant chat contract (JSON response) | ConsultantRequesting |
 | ConsultantRequesting | Response received | 200 + consultant payload | ConsultantReady |
 | ConsultantRequesting | Error | 4xx/5xx transport/runtime | ConsultantRecoverableError |
@@ -118,3 +118,17 @@
 | Reconnecting | Reconnect success | Last event reference honored | StreamingActiveNoDup |
 | Reconnecting | Reconnect fail | Timeout policy | StreamingRecoverableError |
 | StreamingRecoverableError | User retries | Transport restored | StreamingActive |
+
+---
+
+## 10) Missing Backend Capabilities for MVP Shell (4.2 audit)
+
+Статус на 2026-02-23: **критичных блокеров не осталось**.
+
+Закрыто минимальными изменениями:
+1. Dashboard Continue target — добавлено серверное поле `/api/progress.next_lesson_id`.
+2. Consultant gate precheck — добавлено серверное поле `/api/progress.consultant_unlocked`.
+
+Явно отложено (не блокирует MVP shell):
+- Отдельный endpoint `GET /api/progress/next` (сейчас не нужен, т.к. есть `next_lesson_id`).
+- SSE для consultant (текущий JSON-контракт достаточен для MVP).

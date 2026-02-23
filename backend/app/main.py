@@ -419,6 +419,8 @@ def get_progress(access_token: str | None = Cookie(default=None), db: Session = 
     out_modules = []
     total_lessons = 0
     completed_lessons = 0
+    next_lesson_id = None
+    consultant_unlocked = False
 
     for m in module_rows:
         mp = db.execute(select(UserModuleProgress).where(UserModuleProgress.user_id == user_id, UserModuleProgress.module_id == m.id)).scalar_one_or_none()
@@ -439,15 +441,28 @@ def get_progress(access_token: str | None = Cookie(default=None), db: Session = 
                 'completed_at': lp.completed_at.isoformat() if lp.completed_at else None,
             })
 
+        module_status = mp.status if mp else 'locked'
+        if module_status == 'completed':
+            consultant_unlocked = True
+
+        for item in lesson_items:
+            if item['status'] == 'available' and next_lesson_id is None:
+                next_lesson_id = item['lesson_id']
+
         out_modules.append({
             'module_id': m.id,
-            'status': mp.status if mp else 'locked',
+            'status': module_status,
             'completed_at': mp.completed_at.isoformat() if mp and mp.completed_at else None,
             'lessons': lesson_items,
         })
 
     overall_percent = int((completed_lessons / total_lessons) * 100) if total_lessons else 0
-    return {'overall_percent': overall_percent, 'modules': out_modules}
+    return {
+        'overall_percent': overall_percent,
+        'next_lesson_id': next_lesson_id,
+        'consultant_unlocked': consultant_unlocked,
+        'modules': out_modules,
+    }
 
 
 @app.get('/api/progress/stats')

@@ -34,6 +34,7 @@
 ## 5) Dashboard UX Contract
 - Показывает общий прогресс и CTA “Продолжить”.
 - CTA ведёт к первому доступному уроку.
+- Источник для CTA: `GET /api/progress -> next_lesson_id` (если `null`, перейти в empty-state).
 - Если доступных уроков нет, показывается нейтральный empty-state с подсказкой действия.
 
 ## 6) Modules & Lessons UX Contract (sync with phase-3)
@@ -61,6 +62,7 @@
 
 ## 10) Consultant Mode UX
 - Режим доступен только после завершения минимум одного модуля.
+- Предикат доступности для app shell: `GET /api/progress -> consultant_unlocked`.
 - При недоступности отображается объяснение условия доступа.
 - В текущем backend consultant работает в JSON request/response (без SSE).
 - Ответы используют retrieval envelope (`retrieval.citations[]`) и поле `source`.
@@ -87,7 +89,20 @@
 - Контраст и читаемость достаточны для тёмной темы по умолчанию.
 - Основные действия доступны с клавиатуры.
 
-## 15) Out of Scope (frontend)
+## 15) Executable Readiness Checklist (MVP app shell)
+- [x] Auth shell: `/login`, `/register`, redirect на `/dashboard` после login.
+- [x] Route guard: `401` на private data ведёт к logout+redirect `/login`.
+- [x] Dashboard ready-state: `overall_percent` отрисовывается из `/api/progress`.
+- [x] Continue CTA: берёт `next_lesson_id` из `/api/progress`.
+- [x] Empty dashboard: при `next_lesson_id=null` показывается нейтральный empty-state.
+- [x] Modules list: статусы `locked|available|completed` на основе `/api/progress`.
+- [x] Lesson locked state: `GET /api/lessons/{id}/content -> 403 lesson_locked`.
+- [x] Lecture state machine: JSON + SSE (`chunk/done`) с reconnect без дублей.
+- [x] Exam shell: start/finish + score/pass/fail.
+- [x] Consultant gate: `consultant_unlocked` из `/api/progress` + `403 consultant_locked` как fallback-guard.
+- [x] Error mapping: `429 minute_rate_limited|daily_limit_exceeded` в отдельные UX-состояния.
+
+## 16) Out of Scope (frontend)
 - Админ-интерфейсы.
 - Платёжные экраны.
 - Мультиязычность.

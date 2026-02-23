@@ -2,7 +2,7 @@
 
 ## Scenarios
 1. Unauthorized user on private route is redirected to login.
-2. Dashboard “Continue” routes to first available lesson.
+2. Dashboard “Continue” routes to `next_lesson_id` from backend progress envelope.
 3. Locked lesson cannot be opened and shows blocked state.
 4. Lesson completion updates UI statuses using server-confirmed state.
 5. Lecture stream renders incrementally and survives reconnect without duplicates.
@@ -24,6 +24,8 @@
 ### Dashboard / Progress
 - `GET /api/progress` →
   - `overall_percent: int`
+  - `next_lesson_id: str|null` (server-computed CTA target for Dashboard Continue)
+  - `consultant_unlocked: bool` (server-computed consultant availability predicate)
   - `modules: [{ module_id, status, completed_at|null, lessons: [{ lesson_id, status, exam_score|null, exam_attempts, completed_at|null }] }]`
 - `GET /api/modules` → `{ modules: [{ id, title, description|null, order_index, lessons_count }] }`
 

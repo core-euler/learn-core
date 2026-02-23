@@ -41,8 +41,13 @@ def test_progress_and_modules_shapes_for_frontend_dashboard():
     assert progress.status_code == 200
     body = progress.json()
     assert isinstance(body['overall_percent'], int)
+    assert 'next_lesson_id' in body
+    assert isinstance(body['consultant_unlocked'], bool)
     assert isinstance(body['modules'], list)
     assert body['modules']
+    assert body['next_lesson_id'] is not None
+    assert body['consultant_unlocked'] is False
+
     first_module = body['modules'][0]
     assert {'module_id', 'status', 'completed_at', 'lessons'} <= set(first_module.keys())
 
@@ -98,6 +103,19 @@ def test_chat_response_shapes_and_limits_error_codes_for_frontend():
     })
     assert blocked.status_code == 429
     assert blocked.json()['detail'] in {'minute_rate_limited', 'daily_limit_exceeded'}
+
+
+def test_progress_exposes_consultant_gate_after_module_completion():
+    cookies = setup_user()
+
+    first = _available_lesson_id()
+    client.post(f'/api/progress/lessons/{first}/complete', cookies=cookies, headers=csrf_headers(cookies))
+    second = _available_lesson_id()
+    client.post(f'/api/progress/lessons/{second}/complete', cookies=cookies, headers=csrf_headers(cookies))
+
+    progress = client.get('/api/progress', cookies={'access_token': cookies.get('access_token')})
+    assert progress.status_code == 200
+    assert progress.json()['consultant_unlocked'] is True
 
 
 def test_consultant_is_json_response_not_sse():

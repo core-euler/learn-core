@@ -1,6 +1,12 @@
 # Changelog
 
 ## 2026-02-23
+- Закрыт шаг 4.2 Minimal app shell readiness:
+  - зафиксирован executable readiness checklist MVP shell в `docs/frontend.md` (экраны/состояния + проверяемые backend зависимости),
+  - в `docs/frontend-state-maps.md` добавлен audit missing backend capabilities и зафиксировано отсутствие критичных блокеров,
+  - минимальные backend изменения для снятия app-shell блокеров: `/api/progress` расширен полями `next_lesson_id` (Dashboard Continue CTA) и `consultant_unlocked` (gate precheck),
+  - обновлены frontend contracts в `tests/contracts/frontend.contract.md`,
+  - добавлены/обновлены тесты API-совместимости фронта (`backend/tests/test_frontend_api_compat.py`) на новые поля progress envelope.
 - Закрыт шаг 4.1 API compatibility pass:
   - сверены фактические backend response-shapes c frontend контрактами,
   - устранён рассинхрон по consultant flow: зафиксировано, что текущий endpoint работает в JSON (не SSE),

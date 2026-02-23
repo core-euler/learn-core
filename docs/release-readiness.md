@@ -8,6 +8,7 @@
 - Streaming: SSE for lecture с reconnect/replay protocol (`id=<message_id>:<seq>`, partial resume, duplicate prevention)
 - Limits: daily + minute rate limits implemented
 - Frontend API compatibility baseline: aligned (response-shape pass 4.1, including lecture SSE vs consultant JSON distinction)
+- Minimal app shell readiness (4.2): confirmed, включая server-computed shell helpers в `/api/progress` (`next_lesson_id`, `consultant_unlocked`)
 
 ## Security/Hardening Checklist
 - [x] httpOnly auth cookies
@@ -27,11 +28,11 @@
 - [x] Production content ingestion flow (index-based) implemented
 
 ## Test Gates
-- Unit/API test suite: 50 passed (`source .venv/bin/activate && pytest -q`)
+- Unit/API test suite: 51 passed (`source .venv/bin/activate && pytest -q`)
 - Added ops smoke checks: `backend/tests/test_ops_smoke.py` (`/healthz` + `.env.example` required keys)
 - P0 E2E docs: defined
 - P1 E2E docs: defined
 - P2 E2E docs: defined
 
 ## Known Gaps Before Wider Rollout
-1. Minimal app shell readiness confirmation (checklist step 4.2): finalize MVP screen boundary and missing backend capabilities list (if any).
+1. Frontend implementation + e2e execution against зафиксированный 4.2 shell-checklist (backend readiness подтверждён).

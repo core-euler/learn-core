@@ -1,9 +1,13 @@
 # Changelog
 
 ## 2026-02-23
+- Внедрён CSRF double-submit (cookie `csrf_token` + header `X-CSRF-Token`) для state-changing endpoint-ов: `auth/refresh|logout|logout-all`, `chat/*` POST, `progress/.../complete`.
+- Логин/рефреш/Telegram callback теперь переиздают CSRF cookie; logout/logout-all удаляют CSRF cookie.
+- Добавлены позитивные/негативные тесты CSRF (auth/chat/progress).
+- Проведён audit test-routes isolation и добавлен smoke-тест prod-like окружения (`APP_ENV=prod` -> `/_test/*` возвращают 404).
+- Обновлён `docs/release-readiness.md` (security checklist + test gate: 28 passed).
 - Актуализирован корневой `README.md` под фактическое состояние репозитория (implementation in progress, quick start, next focus).
 - Актуализирован `backend/README.md` (статус backend: MVP-ядро реализовано).
-- Обновлён `docs/release-readiness.md` (test gate: 22 passed).
 - Добавлен исполнимый план `docs/implementation-checklist.md` с приоритетами P0/P1, DoD-критериями и строгим порядком реализации.
 
 ## 2026-02-22

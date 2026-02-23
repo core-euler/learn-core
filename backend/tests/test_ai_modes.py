@@ -12,16 +12,21 @@ from backend.app.course_entities import UserLessonProgress
 client = TestClient(app)
 
 
+def csrf_headers(cookies):
+    token = cookies.get('csrf_token') if cookies else None
+    return {'x-csrf-token': token} if token else {}
+
+
 def setup_user():
     client.post('/_test/reset')
     client.post('/_test/seed-course')
     client.post('/api/auth/register', json={'email': 'ai@example.com', 'password': 'password123'})
     l = client.post('/api/auth/login', json={'email': 'ai@example.com', 'password': 'password123'})
-    return l.cookies.get('access_token')
+    return l.cookies
 
 
 def test_lecture_mode_requires_available_lesson():
-    access = setup_user()
+    cookies = setup_user()
     db = SessionLocal()
     try:
         available = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalar_one()
@@ -30,7 +35,7 @@ def test_lecture_mode_requires_available_lesson():
     finally:
         db.close()
 
-    ok = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
+    ok = client.post('/api/chat/lecture', cookies=cookies, headers=csrf_headers(cookies), json={
         'lesson_id': available_id,
         'session_id': None,
         'message': 'hello',
@@ -39,7 +44,7 @@ def test_lecture_mode_requires_available_lesson():
     assert ok.status_code == 200
     assert 'session_id' in ok.json()
 
-    denied = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
+    denied = client.post('/api/chat/lecture', cookies=cookies, headers=csrf_headers(cookies), json={
         'lesson_id': locked_id,
         'session_id': None,
         'message': 'hello',
@@ -49,7 +54,7 @@ def test_lecture_mode_requires_available_lesson():
 
 
 def test_exam_start_finish_sessions_and_consultant_gate():
-    access = setup_user()
+    cookies = setup_user()
 
     db = SessionLocal()
     try:
@@ -58,12 +63,12 @@ def test_exam_start_finish_sessions_and_consultant_gate():
     finally:
         db.close()
 
-    ex = client.post('/api/chat/exam/start', cookies={'access_token': access}, json={'lesson_id': available_id})
+    ex = client.post('/api/chat/exam/start', cookies=cookies, headers=csrf_headers(cookies), json={'lesson_id': available_id})
     assert ex.status_code == 200
     assert len(ex.json()['questions']) == 5
     sid = ex.json()['session_id']
 
-    finish = client.post('/api/chat/exam/finish', cookies={'access_token': access}, json={
+    finish = client.post('/api/chat/exam/finish', cookies=cookies, headers=csrf_headers(cookies), json={
         'session_id': sid,
         'answers': [
             {'question_id': 1, 'answer': 'A'},
@@ -76,22 +81,21 @@ def test_exam_start_finish_sessions_and_consultant_gate():
     assert finish.status_code == 200
     assert finish.json()['passed'] is True
 
-    sessions = client.get('/api/chat/sessions', cookies={'access_token': access})
+    sessions = client.get('/api/chat/sessions', cookies={'access_token': cookies.get('access_token')})
     assert sessions.status_code == 200
     assert len(sessions.json()['sessions']) >= 1
 
-    one = client.get(f"/api/chat/sessions/{sid}", cookies={'access_token': access})
+    one = client.get(f"/api/chat/sessions/{sid}", cookies={'access_token': cookies.get('access_token')})
     assert one.status_code == 200
 
-    consultant_denied = client.post('/api/chat/consultant', cookies={'access_token': access}, json={
+    consultant_denied = client.post('/api/chat/consultant', cookies=cookies, headers=csrf_headers(cookies), json={
         'session_id': None,
         'message': 'help',
         'message_id': 'c1'
     })
     assert consultant_denied.status_code == 403
 
-    # complete full module and try again
-    client.post(f'/api/progress/lessons/{available_id}/complete', cookies={'access_token': access})
+    client.post(f'/api/progress/lessons/{available_id}/complete', cookies=cookies, headers=csrf_headers(cookies))
     db = SessionLocal()
     try:
         next_available = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalars().first()
@@ -99,9 +103,9 @@ def test_exam_start_finish_sessions_and_consultant_gate():
     finally:
         db.close()
 
-    client.post(f'/api/progress/lessons/{next_id}/complete', cookies={'access_token': access})
+    client.post(f'/api/progress/lessons/{next_id}/complete', cookies=cookies, headers=csrf_headers(cookies))
 
-    consultant_ok = client.post('/api/chat/consultant', cookies={'access_token': access}, json={
+    consultant_ok = client.post('/api/chat/consultant', cookies=cookies, headers=csrf_headers(cookies), json={
         'session_id': None,
         'message': 'help',
         'message_id': 'c2'
@@ -110,7 +114,7 @@ def test_exam_start_finish_sessions_and_consultant_gate():
 
 
 def test_lecture_sse_stream_contract():
-    access = setup_user()
+    cookies = setup_user()
 
     db = SessionLocal()
     try:
@@ -119,7 +123,7 @@ def test_lecture_sse_stream_contract():
     finally:
         db.close()
 
-    r = client.post('/api/chat/lecture', cookies={'access_token': access}, headers={'accept': 'text/event-stream'}, json={
+    r = client.post('/api/chat/lecture', cookies=cookies, headers={'accept': 'text/event-stream', **csrf_headers(cookies)}, json={
         'lesson_id': lesson_id,
         'session_id': None,
         'message': 'hello stream',
@@ -131,8 +135,7 @@ def test_lecture_sse_stream_contract():
     assert '"type": "chunk"' in body
     assert '"type": "done"' in body
 
-    # reconnect with last-event-id should avoid chunk re-send for same message_id
-    r2 = client.post('/api/chat/lecture', cookies={'access_token': access}, headers={'accept': 'text/event-stream', 'last-event-id': 'stream-1'}, json={
+    r2 = client.post('/api/chat/lecture', cookies=cookies, headers={'accept': 'text/event-stream', 'last-event-id': 'stream-1', **csrf_headers(cookies)}, json={
         'lesson_id': lesson_id,
         'session_id': None,
         'message': 'hello stream',
@@ -145,7 +148,7 @@ def test_lecture_sse_stream_contract():
 
 
 def test_daily_limit_enforced_on_chat_requests():
-    access = setup_user()
+    cookies = setup_user()
 
     db = SessionLocal()
     try:
@@ -155,7 +158,7 @@ def test_daily_limit_enforced_on_chat_requests():
         db.close()
 
     for i in range(20):
-        r = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
+        r = client.post('/api/chat/lecture', cookies=cookies, headers=csrf_headers(cookies), json={
             'lesson_id': lesson_id,
             'session_id': None,
             'message': f'hello {i}',
@@ -163,10 +166,10 @@ def test_daily_limit_enforced_on_chat_requests():
         })
         assert r.status_code == 200
 
-    client.post('/_test/reset-minute-window', cookies={'access_token': access})
+    client.post('/_test/reset-minute-window', cookies={'access_token': cookies.get('access_token')})
 
     for i in range(20, 30):
-        r = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
+        r = client.post('/api/chat/lecture', cookies=cookies, headers=csrf_headers(cookies), json={
             'lesson_id': lesson_id,
             'session_id': None,
             'message': f'hello {i}',
@@ -174,7 +177,7 @@ def test_daily_limit_enforced_on_chat_requests():
         })
         assert r.status_code == 200
 
-    blocked = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
+    blocked = client.post('/api/chat/lecture', cookies=cookies, headers=csrf_headers(cookies), json={
         'lesson_id': lesson_id,
         'session_id': None,
         'message': 'overflow',
@@ -185,7 +188,7 @@ def test_daily_limit_enforced_on_chat_requests():
 
 
 def test_minute_limit_enforced_before_daily_limit():
-    access = setup_user()
+    cookies = setup_user()
 
     db = SessionLocal()
     try:
@@ -195,7 +198,7 @@ def test_minute_limit_enforced_before_daily_limit():
         db.close()
 
     for i in range(20):
-        r = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
+        r = client.post('/api/chat/lecture', cookies=cookies, headers=csrf_headers(cookies), json={
             'lesson_id': lesson_id,
             'session_id': None,
             'message': f'minute {i}',
@@ -203,7 +206,7 @@ def test_minute_limit_enforced_before_daily_limit():
         })
         assert r.status_code == 200
 
-    blocked = client.post('/api/chat/lecture', cookies={'access_token': access}, json={
+    blocked = client.post('/api/chat/lecture', cookies=cookies, headers=csrf_headers(cookies), json={
         'lesson_id': lesson_id,
         'session_id': None,
         'message': 'minute over',
@@ -211,3 +214,26 @@ def test_minute_limit_enforced_before_daily_limit():
     })
     assert blocked.status_code == 429
     assert blocked.json()['detail'] == 'minute_rate_limited'
+
+
+def test_chat_endpoints_reject_missing_or_invalid_csrf():
+    cookies = setup_user()
+    db = SessionLocal()
+    try:
+        available = db.execute(select(UserLessonProgress).where(UserLessonProgress.status == 'available')).scalar_one()
+        lesson_id = available.lesson_id
+    finally:
+        db.close()
+
+    missing = client.post('/api/chat/lecture', cookies=cookies, json={
+        'lesson_id': lesson_id,
+        'session_id': None,
+        'message': 'no csrf',
+        'message_id': 'csrf-0'
+    })
+    assert missing.status_code == 403
+    assert missing.json()['detail'] == 'csrf_failed'
+
+    invalid = client.post('/api/chat/exam/start', cookies=cookies, headers={'x-csrf-token': 'bad'}, json={'lesson_id': lesson_id})
+    assert invalid.status_code == 403
+    assert invalid.json()['detail'] == 'csrf_failed'

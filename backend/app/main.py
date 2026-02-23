@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import secrets
 
 from fastapi import FastAPI, HTTPException, Response, Cookie, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -44,6 +45,18 @@ def on_startup():
 def _set_auth_cookies(resp: Response, access: str, refresh: str) -> None:
     resp.set_cookie("access_token", access, httponly=True, secure=cookie_secure(), samesite=cookie_samesite())
     resp.set_cookie("refresh_token", refresh, httponly=True, secure=cookie_secure(), samesite=cookie_samesite())
+
+
+def _issue_csrf_token(resp: Response) -> str:
+    token = secrets.token_urlsafe(32)
+    resp.set_cookie("csrf_token", token, httponly=False, secure=cookie_secure(), samesite=cookie_samesite())
+    return token
+
+
+def require_csrf(request: Request, csrf_token: str | None = Cookie(default=None)) -> None:
+    header_token = request.headers.get("x-csrf-token")
+    if not csrf_token or not header_token or header_token != csrf_token:
+        raise HTTPException(status_code=403, detail="csrf_failed")
 
 
 @app.post("/api/auth/register", response_model=RegisterResponse, status_code=201)
@@ -124,6 +137,7 @@ def auth_telegram_callback(
 
     resp = JSONResponse({'ok': True})
     _set_auth_cookies(resp, access, refresh)
+    _issue_csrf_token(resp)
     return resp
 
 
@@ -145,11 +159,12 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
     resp = JSONResponse({"ok": True})
     _set_auth_cookies(resp, access, refresh)
+    _issue_csrf_token(resp)
     return resp
 
 
 @app.post("/api/auth/refresh")
-def refresh(refresh_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+def refresh(refresh_token: str | None = Cookie(default=None), db: Session = Depends(get_db), _: None = Depends(require_csrf)):
     if not refresh_token:
         raise HTTPException(status_code=401, detail="missing_refresh")
 
@@ -188,6 +203,7 @@ def refresh(refresh_token: str | None = Cookie(default=None), db: Session = Depe
     access = create_access_token(session.user_id)
     resp = JSONResponse({"ok": True})
     _set_auth_cookies(resp, access, new_refresh)
+    _issue_csrf_token(resp)
     return resp
 
 
@@ -208,7 +224,7 @@ def me(access_token: str | None = Cookie(default=None), db: Session = Depends(ge
 
 
 @app.post("/api/auth/logout")
-def logout(refresh_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+def logout(refresh_token: str | None = Cookie(default=None), db: Session = Depends(get_db), _: None = Depends(require_csrf)):
     if refresh_token:
         refresh_hash = hash_refresh_token(refresh_token)
         session = db.execute(select(DbSession).where(DbSession.refresh_token_hash == refresh_hash)).scalar_one_or_none()
@@ -219,11 +235,12 @@ def logout(refresh_token: str | None = Cookie(default=None), db: Session = Depen
     resp = JSONResponse({"ok": True})
     resp.delete_cookie("access_token")
     resp.delete_cookie("refresh_token")
+    resp.delete_cookie("csrf_token")
     return resp
 
 
 @app.post("/api/auth/logout-all")
-def logout_all(access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+def logout_all(access_token: str | None = Cookie(default=None), db: Session = Depends(get_db), _: None = Depends(require_csrf)):
     if not access_token:
         raise HTTPException(status_code=401, detail="missing_access")
     try:
@@ -240,6 +257,7 @@ def logout_all(access_token: str | None = Cookie(default=None), db: Session = De
     resp = JSONResponse({"ok": True})
     resp.delete_cookie("access_token")
     resp.delete_cookie("refresh_token")
+    resp.delete_cookie("csrf_token")
     return resp
 
 
@@ -434,7 +452,7 @@ def get_progress_stats(access_token: str | None = Cookie(default=None), db: Sess
 
 
 @app.post('/api/chat/lecture')
-def chat_lecture(payload: LectureRequest, request: Request, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+def chat_lecture(payload: LectureRequest, request: Request, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db), _: None = Depends(require_csrf)):
     if not access_token:
         raise HTTPException(status_code=401, detail='missing_access')
     try:
@@ -467,7 +485,7 @@ def chat_lecture(payload: LectureRequest, request: Request, access_token: str | 
 
 
 @app.post('/api/chat/exam/start')
-def chat_exam_start(payload: ExamStartRequest, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+def chat_exam_start(payload: ExamStartRequest, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db), _: None = Depends(require_csrf)):
     if not access_token:
         raise HTTPException(status_code=401, detail='missing_access')
     try:
@@ -510,7 +528,7 @@ def chat_exam_start(payload: ExamStartRequest, access_token: str | None = Cookie
 
 
 @app.post('/api/chat/exam/finish')
-def chat_exam_finish(payload: dict, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+def chat_exam_finish(payload: dict, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db), _: None = Depends(require_csrf)):
     if not access_token:
         raise HTTPException(status_code=401, detail='missing_access')
     try:
@@ -585,7 +603,7 @@ def chat_session(session_id: str, access_token: str | None = Cookie(default=None
 
 
 @app.post('/api/chat/consultant')
-def chat_consultant(payload: ConsultantRequest, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+def chat_consultant(payload: ConsultantRequest, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db), _: None = Depends(require_csrf)):
     if not access_token:
         raise HTTPException(status_code=401, detail='missing_access')
     try:
@@ -613,7 +631,7 @@ def chat_consultant(payload: ConsultantRequest, access_token: str | None = Cooki
 
 
 @app.post('/api/progress/lessons/{lesson_id}/complete')
-def complete_lesson(lesson_id: str, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+def complete_lesson(lesson_id: str, access_token: str | None = Cookie(default=None), db: Session = Depends(get_db), _: None = Depends(require_csrf)):
     if not access_token:
         raise HTTPException(status_code=401, detail='missing_access')
     try:

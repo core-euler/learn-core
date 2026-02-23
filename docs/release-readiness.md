@@ -17,12 +17,16 @@
 
 ## Data/Infra Checklist
 - [x] Docker compose with PostgreSQL + backend
+- [x] Healthchecks wired for `db` and `backend` (`/healthz`)
+- [x] `.env.example` with required runtime/ops keys and safe local defaults
+- [x] Local + staging runbook documented (`docs/runbook.md`)
 - [x] SQLAlchemy persistence in place
 - [x] Alembic migrations introduced (initial revision + runbook + smoke-test)
 - [x] Production content ingestion flow (index-based) implemented
 
 ## Test Gates
-- Unit/API test suite: 37 passed (`source .venv/bin/activate && pytest -q`)
+- Unit/API test suite: 39 passed (`source .venv/bin/activate && pytest -q`)
+- Added ops smoke checks: `backend/tests/test_ops_smoke.py` (`/healthz` + `.env.example` required keys)
 - P0 E2E docs: defined
 - P1 E2E docs: defined
 - P2 E2E docs: defined

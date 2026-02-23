@@ -38,6 +38,12 @@ import json
 app = FastAPI(title="LLM Handbook MVP Backend")
 
 
+@app.get("/healthz")
+def healthz(db: Session = Depends(get_db)):
+    db.execute(select(1))
+    return {"ok": True}
+
+
 @app.on_event("startup")
 def on_startup():
     if settings.content_validate_on_startup:

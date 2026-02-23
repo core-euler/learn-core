@@ -18,11 +18,21 @@ Documentation-first + implementation repository for LLM Handbook MVP.
 ## Quick start
 ```bash
 cd /home/claw/llm-handbook-mvp
+cp .env.example .env
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
 pytest -q
 ```
+
+## Docker local stack
+```bash
+docker compose up -d --build
+docker compose ps  # db/backend should become healthy
+curl -fsS http://localhost:8000/healthz
+```
+
+Local/staging operational steps: `docs/runbook.md`.
 
 ## DB migrations (Alembic)
 ```bash

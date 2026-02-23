@@ -1,6 +1,13 @@
 # Changelog
 
 ## 2026-02-23
+- Закрыт шаг 2.3 Docker/ops polish:
+  - добавлен backend health endpoint `GET /healthz` и healthcheck в `docker-compose.yml` + `backend/Dockerfile`,
+  - postgres healthcheck в compose параметризован через `.env` переменные,
+  - добавлен полноценный `.env.example` с обязательными runtime/ops ключами и безопасными локальными дефолтами,
+  - обновлён `docs/runbook.md` (local + staging запуск, health verification, migration и smoke команды),
+  - добавлены ops smoke-тесты `backend/tests/test_ops_smoke.py` (`/healthz` и проверка обязательных ключей в `.env.example`).
+- Test gate: `39 passed` (`source .venv/bin/activate && pytest -q`).
 - Для шага 2.2 внедрён контракт индекса контента: добавлен `backend/content/index.json` с обязательной `version` и module/lesson map.
 - Добавлен валидатор структуры контента `backend/app/content_index.py`:
   - schema-validation индекса,

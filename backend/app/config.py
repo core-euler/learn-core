@@ -29,5 +29,8 @@ class Settings:
     password_argon2_hash_len: int = int(os.getenv("PASSWORD_ARGON2_HASH_LEN", "32"))
     password_argon2_salt_bytes: int = int(os.getenv("PASSWORD_ARGON2_SALT_BYTES", "16"))
 
+    # Content ingestion / validation
+    content_validate_on_startup: bool = os.getenv("CONTENT_VALIDATE_ON_STARTUP", "true").lower() == "true"
+
 
 settings = Settings()

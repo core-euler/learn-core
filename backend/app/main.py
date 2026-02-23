@@ -31,6 +31,7 @@ from .streaming import build_stub_stream
 from .env import is_test_mode, cookie_secure, cookie_samesite
 from .telegram_auth import validate_telegram_payload, resolve_bot_id
 from .config import settings
+from .content_index import validate_default_content_index
 import os
 import json
 
@@ -39,6 +40,8 @@ app = FastAPI(title="LLM Handbook MVP Backend")
 
 @app.on_event("startup")
 def on_startup():
+    if settings.content_validate_on_startup:
+        validate_default_content_index()
     Base.metadata.create_all(bind=engine)
 
 

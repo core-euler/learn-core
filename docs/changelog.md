@@ -1,6 +1,15 @@
 # Changelog
 
 ## 2026-02-23
+- Для шага 2.2 внедрён контракт индекса контента: добавлен `backend/content/index.json` с обязательной `version` и module/lesson map.
+- Добавлен валидатор структуры контента `backend/app/content_index.py`:
+  - schema-validation индекса,
+  - проверки инвариантов (пустые/дубли order/slug),
+  - проверка существования markdown-файлов,
+  - fail-fast проверка на startup (`CONTENT_VALIDATE_ON_STARTUP=true`) и отдельный CLI запуск (`python -m backend.app.content_index`).
+- Добавлены тесты на битый/неполный контент `backend/tests/test_content_index_validator.py` (missing file, module без lessons, missing contract fields).
+- Обновлён `docs/spec.md` (контракт content index на уровне требований).
+- Test gate: `37 passed` (`source .venv/bin/activate && pytest -q`).
 - Инициализирован Alembic (`alembic/`, `alembic.ini`) и настроен на metadata SQLAlchemy моделей backend.
 - Добавлена initial migration `f6ae674d7b9f_initial_schema.py` по текущим моделям.
 - Добавлен migration smoke-check `backend/tests/test_alembic_migrations.py` (upgrade/downgrade на чистой БД + optional PostgreSQL smoke через `TEST_POSTGRES_DATABASE_URL`).

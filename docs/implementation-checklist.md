@@ -100,11 +100,13 @@ _Last update: 2026-02-23_
 
 ### 5.2 Documentation sync
 - [x] После закрытия 5.1 синхронизированы `docs/changelog.md`, `docs/release-readiness.md` и связанные e2e/checklist/contract артефакты.
-- [ ] После каждого закрытого пункта обновлять:
+- [x] После финального release-readiness pass синхронизированы:
+  - `README.md`
   - `docs/changelog.md`
   - `docs/release-readiness.md`
-  - релевантные contracts/checklists
-- **DoD:** документация не отстаёт от кода.
+  - `docs/spec.md`
+  - релевантные contracts/checklists (без дополнительных изменений, статус консистентен)
+- **DoD:** документация не отстаёт от кода. ✅ Закрыто (2026-02-23).
 
 ---
 

@@ -1,5 +1,7 @@
 # Release Readiness (Closed Testing)
 
+_Last sync: 2026-02-23 (step 5.2 Documentation sync / final pass)_
+
 ## Current Backend Status Snapshot
 - Auth/session core: implemented
 - Course/progress core: implemented
@@ -57,5 +59,18 @@
   - release gates documented in this file and linked checklists/contracts.
 - **Fail criteria:** code/tests changed without doc synchronization.
 
-## Known Gaps Before Wider Rollout
+## Final Gate Run (2026-02-23)
+- Command: `source .venv/bin/activate && pytest -q`
+- Result: `52 passed, 137 warnings in 17.61s`
+- Gate verdict:
+  - G0 Build Integrity — **PASS**
+  - G1 Smoke E2E Happy Path — **PASS**
+  - G2 Contract/Regression Baseline — **PASS**
+  - G3 Documentation Sync — **PASS**
+
+## MVP Readiness Verdict
+**MVP-ready for closed rollout.**
+
+## Residual Known Gaps Before Wider Rollout
 1. Frontend implementation + full UI e2e execution against зафиксированный 4.2 shell-checklist (backend readiness подтверждён).
+2. Non-blocking technical debt: deprecation warnings (`FastAPI on_event`, per-request cookies in Starlette testclient) требуют плановой очистки перед production hardening wave.

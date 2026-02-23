@@ -3,10 +3,11 @@
 Documentation-first + implementation repository for LLM Handbook MVP.
 
 ## Current status (2026-02-23)
-- Backend MVP core implemented (auth/session, course/progress, AI mode scaffold, limits, Telegram auth callback).
+- MVP backend scope implemented (auth/session, course/progress, AI modes via provider adapter + minimal RAG contract, SSE reliability, limits, Telegram auth callback).
+- Security hardening baseline закрыт: CSRF double-submit, test-route isolation, production KDF policy.
 - Alembic initialized with initial migration from current SQLAlchemy models.
-- Test suite green: run `pytest -q`.
-- Docker compose present (`backend + PostgreSQL`).
+- Release test gate green: `52 passed` (`source .venv/bin/activate && pytest -q`, 2026-02-23).
+- Docker compose present (`backend + PostgreSQL`) с healthchecks.
 
 ## Repository map
 - `backend/` — FastAPI backend implementation + tests
@@ -45,5 +46,9 @@ alembic history
 
 For clean PostgreSQL bootstrap, see `docs/runbook.md`.
 
-## Next focus
-See: `docs/implementation-checklist.md` and `docs/release-readiness.md`.
+## Release status
+MVP-ready for closed rollout по зафиксированным quality gates (см. `docs/release-readiness.md`).
+
+Residual known gaps перед wider rollout:
+- отсутствует реализованный frontend-клиент и UI e2e поверх реального приложения (backend/API readiness подтверждены);
+- есть non-blocking технический долг по deprecation warnings (FastAPI `on_event`, per-request cookies в testclient).

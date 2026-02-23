@@ -1,6 +1,11 @@
 # Changelog
 
 ## 2026-02-23
+- Закрыт шаг 5.2 Documentation sync / final release-readiness pass:
+  - синхронизированы ключевые документы после 5.1: `README.md`, `docs/release-readiness.md`, `docs/changelog.md`, `docs/spec.md`, `docs/implementation-checklist.md`,
+  - зафиксирован итоговый статус `MVP-ready for closed rollout` и явный residual known gaps list,
+  - выполнен финальный прогон quality gate: `52 passed` (`source .venv/bin/activate && pytest -q`), результат отражён в release-readiness,
+  - implementation checklist приведён к фактическому завершению (пункт 5.2 закрыт).
 - Закрыт шаг 5.1 Test gate hardening:
   - добавлен быстрый и устойчивый smoke e2e happy-path тест `backend/tests/test_smoke_e2e_happy_path.py` (auth → modules/progress/content → ai lecture → progress completion),
   - зафиксированы минимальные release quality gates с явными pass/fail критериями в `docs/release-readiness.md` (G0/G1/G2/G3),

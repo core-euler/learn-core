@@ -22,7 +22,7 @@
 - [ ] Production content ingestion flow (index-based) implemented
 
 ## Test Gates
-- Unit/API test suite: 18 passed
+- Unit/API test suite: 22 passed
 - P0 E2E docs: defined
 - P1 E2E docs: defined
 - P2 E2E docs: defined

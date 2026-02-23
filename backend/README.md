@@ -1,8 +1,8 @@
-# Backend (MVP bootstrap)
+# Backend (MVP implementation)
 
-Текущий статус: старт реализации backend.
+Текущий статус: backend MVP-ядро реализовано, идёт hardening + productionization.
 
-Реализовано в первом инкременте:
+Реализовано на текущий момент:
 - FastAPI приложение с auth endpoints:
   - `POST /api/auth/register`
   - `POST /api/auth/login`

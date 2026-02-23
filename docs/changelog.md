@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-02-23
+- Актуализирован корневой `README.md` под фактическое состояние репозитория (implementation in progress, quick start, next focus).
+- Актуализирован `backend/README.md` (статус backend: MVP-ядро реализовано).
+- Обновлён `docs/release-readiness.md` (test gate: 22 passed).
+- Добавлен исполнимый план `docs/implementation-checklist.md` с приоритетами P0/P1, DoD-критериями и строгим порядком реализации.
+
 ## 2026-02-22
 - Инициализирован репозиторий документации LLM Handbook MVP.
 - Добавлена master-спецификация `docs/spec.md`.

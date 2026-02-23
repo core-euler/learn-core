@@ -11,3 +11,6 @@
 ## Invariants
 - Нельзя иметь available в модуле, если предыдущий модуль не завершён.
 - Нельзя завершить неразблокированный урок.
+
+## Release Gate Link
+- Входит в блокирующий smoke-кейс `E2E-SMOKE-API-1` (`next_lesson_id` доступен, completion повышает `overall_percent`).

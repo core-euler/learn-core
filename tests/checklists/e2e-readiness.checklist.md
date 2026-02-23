@@ -16,6 +16,8 @@
 - [ ] Для лимитов есть контролируемые тестовые значения.
 
 ## MVP Gates
-- [ ] Smoke e2e сценарии определены как блокирующие.
+- [ ] G0: `pytest -q` проходит без падений (exit code 0).
+- [ ] G1: `backend/tests/test_smoke_e2e_happy_path.py::test_smoke_e2e_happy_path_auth_course_progress_ai` проходит стабильно.
+- [ ] Smoke e2e сценарии определены как блокирующие (P0 hard gate).
 - [ ] Core e2e сценарии определены как обязательные.
 - [ ] Resilience e2e сценарии определены как рекомендованные к релизу MVP.

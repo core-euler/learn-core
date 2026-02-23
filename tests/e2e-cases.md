@@ -49,3 +49,14 @@
 - Given пользователь превысил дневной лимит
 - When отправляет сообщение
 - Then видит лимитное состояние с указанием reset-ориентира
+
+## E2E-SMOKE-API-1: Backend happy path (auth → course/progress → ai)
+- Given чистое test-окружение с seed-course
+- When пользователь регистрируется и логинится
+- Then получает `access_token` + `refresh_token` + `csrf_token`
+- When запрашивает `/api/progress`
+- Then получает `next_lesson_id` для доступного урока
+- When открывает `/api/lessons/{next_lesson_id}/content` и отправляет `/api/chat/lecture`
+- Then получает 200-ответ и валидный AI reply без fallback (`fallback_reason=ok`)
+- When завершает урок через `/api/progress/lessons/{id}/complete`
+- Then `overall_percent` увеличивается

@@ -27,12 +27,35 @@
 - [x] Alembic migrations introduced (initial revision + runbook + smoke-test)
 - [x] Production content ingestion flow (index-based) implemented
 
-## Test Gates
-- Unit/API test suite: 51 passed (`source .venv/bin/activate && pytest -q`)
-- Added ops smoke checks: `backend/tests/test_ops_smoke.py` (`/healthz` + `.env.example` required keys)
-- P0 E2E docs: defined
-- P1 E2E docs: defined
-- P2 E2E docs: defined
+## Test Gates (Release Decision Policy)
+
+### Gate G0 — Build Integrity (hard fail)
+- **Command:** `source .venv/bin/activate && pytest -q`
+- **Pass criteria:** exit code `0`, no failed tests.
+- **Fail criteria:** any failing test, test crash, or interrupted run.
+
+### Gate G1 — Smoke E2E Happy Path (hard fail)
+- **Scope:** `auth → course/progress → ai endpoint`.
+- **Reference test:** `backend/tests/test_smoke_e2e_happy_path.py::test_smoke_e2e_happy_path_auth_course_progress_ai`
+- **Pass criteria:**
+  - login issues `access_token` + `refresh_token` + `csrf_token`,
+  - `/api/progress` returns non-empty path (`next_lesson_id`),
+  - lesson content is accessible for available lesson,
+  - `/api/chat/lecture` returns `200` with `fallback_reason=ok`,
+  - lesson completion increases `overall_percent`.
+- **Fail criteria:** any broken step in this sequence.
+
+### Gate G2 — Contract/Regression Baseline (hard fail)
+- **Scope:** existing backend API/security/streaming/limits/contracts tests.
+- **Pass criteria:** all tests in the default `pytest -q` selection are green.
+- **Fail criteria:** any regression in auth, CSRF, progress logic, AI flow, limits, migrations, ops smoke.
+
+### Gate G3 — Release Documentation Sync (hard fail)
+- **Pass criteria:**
+  - `docs/changelog.md` reflects delivered changes,
+  - `docs/implementation-checklist.md` reflects real completion status,
+  - release gates documented in this file and linked checklists/contracts.
+- **Fail criteria:** code/tests changed without doc synchronization.
 
 ## Known Gaps Before Wider Rollout
-1. Frontend implementation + e2e execution against зафиксированный 4.2 shell-checklist (backend readiness подтверждён).
+1. Frontend implementation + full UI e2e execution against зафиксированный 4.2 shell-checklist (backend readiness подтверждён).

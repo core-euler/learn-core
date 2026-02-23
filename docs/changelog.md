@@ -1,6 +1,10 @@
 # Changelog
 
 ## 2026-02-23
+- Закрыт шаг 5.1 Test gate hardening:
+  - добавлен быстрый и устойчивый smoke e2e happy-path тест `backend/tests/test_smoke_e2e_happy_path.py` (auth → modules/progress/content → ai lecture → progress completion),
+  - зафиксированы минимальные release quality gates с явными pass/fail критериями в `docs/release-readiness.md` (G0/G1/G2/G3),
+  - синхронизированы связанные e2e/checklist/contract артефакты: `tests/e2e-cases.md`, `tests/e2e-priority-matrix.md`, `tests/checklists/e2e-readiness.checklist.md`, `tests/contracts/{auth-sessions,course-progress,ai-rag}.contract.md`.
 - Закрыт шаг 4.2 Minimal app shell readiness:
   - зафиксирован executable readiness checklist MVP shell в `docs/frontend.md` (экраны/состояния + проверяемые backend зависимости),
   - в `docs/frontend-state-maps.md` добавлен audit missing backend capabilities и зафиксировано отсутствие критичных блокеров,

@@ -19,6 +19,7 @@
 | E2E-D1 | Consultant gate by module completion | P1 | Required for closed beta | Ограничение доступа к advanced mode |
 | E2E-E1 | Streaming reconnect without duplicates | P1 | Required for closed beta | Надёжность UX в нестабильной сети |
 | E2E-F1 | Daily limit state rendering | P2 | Target for MVP, waiver allowed | UX-качество лимитов, не блокирует базовый путь |
+| E2E-SMOKE-API-1 | Backend happy path (auth → course/progress → ai) | P0 | Mandatory pass (hard gate) | Минимальный сквозной релизный сценарий backend |
 
 ## Gate Policy
 

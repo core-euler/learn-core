@@ -94,11 +94,12 @@ _Last update: 2026-02-23_
 ## 5) Quality Gates & Release (P0)
 
 ### 5.1 Test gate hardening
-- [ ] Добавить smoke e2e (happy path): auth → course/progress → ai endpoint.
-- [ ] Зафиксировать минимальные quality gates для релиза.
-- **DoD:** release decision делается по явным критериям, а не «на глаз».
+- [x] Добавить smoke e2e (happy path): auth → course/progress → ai endpoint.
+- [x] Зафиксировать минимальные quality gates для релиза.
+- **DoD:** release decision делается по явным критериям, а не «на глаз». ✅ Закрыто (2026-02-23).
 
 ### 5.2 Documentation sync
+- [x] После закрытия 5.1 синхронизированы `docs/changelog.md`, `docs/release-readiness.md` и связанные e2e/checklist/contract артефакты.
 - [ ] После каждого закрытого пункта обновлять:
   - `docs/changelog.md`
   - `docs/release-readiness.md`

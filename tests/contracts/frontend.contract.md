@@ -14,6 +14,7 @@
 - Frontend state transitions are deterministic.
 - Frontend does not bypass backend authorization/progress rules.
 - Streaming UX remains coherent under transient network failures.
+- Frontend behavior is fully aligned with `docs/frontend-api-canonical.md` and `docs/frontend-state-maps.md`.
 
 ## API Response Shapes used by frontend (4.1 compatibility baseline)
 

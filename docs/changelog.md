@@ -1,6 +1,14 @@
 # Changelog
 
 ## 2026-02-23
+- Усилен frontend documentation pack по методике LLM-Driven:
+  - добавлен канонический API baseline `docs/frontend-api-canonical.md`,
+  - добавлена frontend traceability-матрица `docs/frontend-traceability.md`,
+  - добавлен исполнимый чеклист `tests/checklists/frontend-readiness.checklist.md`,
+  - расширены state maps (`docs/frontend-state-maps.md`) до полного MVP покрытия и global coverage rule,
+  - обновлён e2e priority matrix (добавлен P0 gate `E2E-SMOKE-FE-1`),
+  - синхронизированы `docs/release-readiness.md`, `tests/traceability.md`, `docs/spec.md`,
+  - устранён несинхрон в `docs/implementation-checklist.md` (пункты 1.1 и 1.3 отмечены как завершённые).
 - Frontend shell приведён к продуктовой директиве chat-first layout (без дизайн-полировки):
   - внедрён единый app shell с левой колонкой курса (модули/уроки) вместо топ-нав/истории,
   - lesson workspace перестроен в chat-first паттерн (основная зона = чат режимов, материал урока как secondary block),

@@ -128,6 +128,7 @@ Duplicate prevention инварианты:
   - `daily_limit_exceeded`
   - `minute_rate_limited`
 - Для фронтенда источником серверной truth-модели прогресса остаётся `GET /api/progress`.
+- Канонический frontend API/UX baseline фиксируется в `docs/frontend-api-canonical.md` и `docs/frontend-state-maps.md`.
 
 ## Карта модулей
 | Модуль | Документация | Описание |

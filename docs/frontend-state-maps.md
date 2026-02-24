@@ -121,7 +121,32 @@
 
 ---
 
-## 10) Missing Backend Capabilities for MVP Shell (4.2 audit)
+## 10) Profile Screen
+
+| State | Trigger | Dependency | Next |
+|---|---|---|---|
+| ProfileLoading | Open profile route | `GET /api/auth/me` | ProfileReady |
+| ProfileLoading | Session invalid | 401 from auth/me | LoginRedirect |
+| ProfileReady | Logout click | Logout contract | LoginRedirect |
+| ProfileReady | Network failure | Transport error | ProfileError |
+| ProfileError | Retry | API recovers | ProfileLoading |
+
+---
+
+## 11) Global State Coverage Rule
+
+Для каждого MVP-экрана (`login`, `register`, `dashboard`, `modules`, `lesson workspace`, `profile`) должны быть описаны и проверяемы состояния:
+- Loading
+- Ready
+- Empty (если применимо)
+- Error (recoverable)
+- Forbidden/Locked (если применимо)
+
+Если экран не поддерживает конкретное состояние (например Empty для login), это явно фиксируется в контракте как not-applicable.
+
+---
+
+## 12) Missing Backend Capabilities for MVP Shell (4.2 audit)
 
 Статус на 2026-02-23: **критичных блокеров не осталось**.
 

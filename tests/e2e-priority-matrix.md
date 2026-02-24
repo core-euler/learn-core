@@ -20,6 +20,7 @@
 | E2E-E1 | Streaming reconnect without duplicates | P1 | Required for closed beta | Надёжность UX в нестабильной сети |
 | E2E-F1 | Daily limit state rendering | P2 | Target for MVP, waiver allowed | UX-качество лимитов, не блокирует базовый путь |
 | E2E-SMOKE-API-1 | Backend happy path (auth → course/progress → ai) | P0 | Mandatory pass (hard gate) | Минимальный сквозной релизный сценарий backend |
+| E2E-SMOKE-FE-1 | Frontend shell smoke (unauthorized redirect + dashboard continue CTA) | P0 | Mandatory pass (hard gate) | Минимальный сквозной релизный сценарий frontend |
 
 ## Gate Policy
 

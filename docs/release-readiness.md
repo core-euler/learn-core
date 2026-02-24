@@ -59,6 +59,14 @@ _Last sync: 2026-02-23 (step 5.2 Documentation sync / final pass)_
   - release gates documented in this file and linked checklists/contracts.
 - **Fail criteria:** code/tests changed without doc synchronization.
 
+### Gate G4 — Frontend MVP Contract Readiness (hard fail for frontend rollout)
+- **Scope:** frontend API/state/UX contracts and executable checklist.
+- **Pass criteria:**
+  - `docs/frontend-api-canonical.md` and `docs/frontend-state-maps.md` are synchronized,
+  - `tests/checklists/frontend-readiness.checklist.md` is consistent with current frontend behavior,
+  - `tests/e2e-priority-matrix.md` contains frontend smoke as P0 gate.
+- **Fail criteria:** any mismatch between frontend behavior and documented contract baseline.
+
 ## Final Gate Run (2026-02-23)
 - Command: `source .venv/bin/activate && pytest -q`
 - Result: `52 passed, 137 warnings in 17.61s`
@@ -67,10 +75,12 @@ _Last sync: 2026-02-23 (step 5.2 Documentation sync / final pass)_
   - G1 Smoke E2E Happy Path — **PASS**
   - G2 Contract/Regression Baseline — **PASS**
   - G3 Documentation Sync — **PASS**
+  - G4 Frontend MVP Contract Readiness — **PASS**
 
 ## MVP Readiness Verdict
 **MVP-ready for closed rollout.**
 
 ## Residual Known Gaps Before Wider Rollout
-1. Frontend implementation + full UI e2e execution against зафиксированный 4.2 shell-checklist (backend readiness подтверждён).
+1. Full browser-level UI e2e (Playwright class) ещё не зафиксирован как обязательный gate; текущий baseline — frontend smoke + backend e2e.
 2. Non-blocking technical debt: deprecation warnings (`FastAPI on_event`, per-request cookies in Starlette testclient) требуют плановой очистки перед production hardening wave.
+3. Нужна отдельная формализация retry/backoff UX-политики для lecture reconnect при длительных сетевых обрывах.

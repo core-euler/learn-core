@@ -14,10 +14,10 @@ _Last update: 2026-02-23_
 ## 1) Security Hardening (P0)
 
 ### 1.1 CSRF для state-changing endpoints
-- [ ] Внедрить double-submit CSRF token схему.
-- [ ] Защитить минимум: `login/refresh/logout/logout-all`, AI chat POST-endpoints, progress update endpoints (если есть POST/PATCH).
-- [ ] Добавить негативные/позитивные тесты на отсутствие/невалидный/валидный CSRF.
-- **DoD:** state-changing запросы без CSRF режутся стабильно, тесты зелёные.
+- [x] Внедрить double-submit CSRF token схему.
+- [x] Защитить минимум: `login/refresh/logout/logout-all`, AI chat POST-endpoints, progress update endpoints (если есть POST/PATCH).
+- [x] Добавить негативные/позитивные тесты на отсутствие/невалидный/валидный CSRF.
+- **DoD:** state-changing запросы без CSRF режутся стабильно, тесты зелёные. ✅ Закрыто (2026-02-23).
 
 ### 1.2 Password/KDF policy для production
 - [x] Зафиксировать и внедрить production policy (argon2id/scrypt + параметры).
@@ -26,9 +26,9 @@ _Last update: 2026-02-23_
 - **DoD:** политика описана в docs + покрыта тестами + включается через env/config.
 
 ### 1.3 Test routes isolation audit
-- [ ] Перепроверить, что test-only endpoints недоступны вне `APP_ENV=test`.
-- [ ] Добавить smoke-тест на prod-like env.
-- **DoD:** нет утечек тестовых ручек в non-test окружения.
+- [x] Перепроверить, что test-only endpoints недоступны вне `APP_ENV=test`.
+- [x] Добавить smoke-тест на prod-like env.
+- **DoD:** нет утечек тестовых ручек в non-test окружения. ✅ Закрыто (2026-02-23).
 
 ---
 

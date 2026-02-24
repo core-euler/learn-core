@@ -16,6 +16,7 @@ export function LectureModePage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [lastEventId, setLastEventId] = useState<string | undefined>();
+  const [reconnectAttempt, setReconnectAttempt] = useState<number>(0);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -26,6 +27,7 @@ export function LectureModePage() {
     setInput('');
     setIsStreaming(true);
     setStreamError(null);
+    setReconnectAttempt(0);
 
     const updateAssistant = (chunk: string) => {
       setMessages((prev) => {
@@ -46,6 +48,7 @@ export function LectureModePage() {
           onChunk: (chunk) => updateAssistant(chunk),
           onEventId: (id) => setLastEventId(id),
           onDone: () => undefined,
+          onReconnectAttempt: (attempt) => setReconnectAttempt(attempt),
         },
       });
     } catch (e) {
@@ -79,6 +82,7 @@ export function LectureModePage() {
         ))}
       </div>
       {isStreaming && <p className="muted">Генерация ответа...</p>}
+      {reconnectAttempt > 0 && isStreaming && <p className="muted">Переподключение потока… попытка {reconnectAttempt}</p>}
       {streamError && <p className="error">{streamError}</p>}
       <form onSubmit={submit} className="composer">
         <input value={input} onChange={(e) => setInput(e.target.value)} maxLength={4000} placeholder="Ваш вопрос" />

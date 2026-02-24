@@ -163,3 +163,13 @@
   - release-readiness snapshot (`docs/release-readiness.md`).
 - Добавлен Telegram auth callback endpoint с HMAC/freshness валидацией и тестами.
 - Добавлена bot-id binding проверка для Telegram auth (через resolve_bot_id/getMe) и тест mismatch-case.
+
+## 2026-02-24
+- Продолжена фронтовая реализация строго в репозитории `/home/claw/llm-handbook-mvp`.
+- Перенесены и закреплены методические alias-артефакты фронта:
+  - `tests/contracts/frontend-api.contract.md`
+  - `tests/e2e-frontend-cases.md`
+  - `docs/traceability-frontend.md`
+- Прогнаны quality gates:
+  - backend: `pytest -q` → `52 passed`
+  - frontend: `npm run lint && npm run test && npm run build` → pass

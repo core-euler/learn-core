@@ -84,3 +84,8 @@ _Last sync: 2026-02-23 (step 5.2 Documentation sync / final pass)_
 1. Full browser-level UI e2e (Playwright class) ещё не зафиксирован как обязательный gate; текущий baseline — frontend smoke + backend e2e.
 2. Non-blocking technical debt: deprecation warnings (`FastAPI on_event`, per-request cookies in Starlette testclient) требуют плановой очистки перед production hardening wave.
 3. Нужна отдельная формализация retry/backoff UX-политики для lecture reconnect при длительных сетевых обрывах.
+
+## Additional Gate Run (2026-02-24)
+- backend: `source .venv/bin/activate && pytest -q` → `52 passed`
+- frontend: `cd frontend && npm run lint && npm run test && npm run build` → pass
+- Verdict update: MVP frontend/backend baseline remains **PASS**.

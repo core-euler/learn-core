@@ -7,6 +7,11 @@ import { ApiError, mapLimitDetail } from '../utils/http';
 
 type Ctx = { lessonId: string };
 
+type PendingRequest = {
+  text: string;
+  messageId: string;
+};
+
 export function LectureModePage() {
   const { lessonId } = useOutletContext<Ctx>();
   const [input, setInput] = useState('');
@@ -17,26 +22,30 @@ export function LectureModePage() {
   const [streamError, setStreamError] = useState<string | null>(null);
   const [lastEventId, setLastEventId] = useState<string | undefined>();
   const [reconnectAttempt, setReconnectAttempt] = useState<number>(0);
+  const [pendingRequest, setPendingRequest] = useState<PendingRequest | null>(null);
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!input.trim()) return;
-    const text = input.trim();
-    const messageId = crypto.randomUUID();
-    setMessages((m) => [...m, { role: 'user', text }, { role: 'assistant', text: '' }]);
-    setInput('');
+  const updateAssistant = (chunk: string) => {
+    setMessages((prev) => {
+      const copy = [...prev];
+      const last = copy[copy.length - 1];
+      copy[copy.length - 1] = { ...last, text: `${last.text}${chunk}` };
+      return copy;
+    });
+  };
+
+  const removeLastAssistant = () => {
+    setMessages((prev) => {
+      const copy = [...prev];
+      if (copy.length > 0 && copy[copy.length - 1]?.role === 'assistant') copy.pop();
+      return copy;
+    });
+  };
+
+  async function runLectureStream(text: string, messageId: string): Promise<boolean> {
     setIsStreaming(true);
     setStreamError(null);
     setReconnectAttempt(0);
-
-    const updateAssistant = (chunk: string) => {
-      setMessages((prev) => {
-        const copy = [...prev];
-        const last = copy[copy.length - 1];
-        copy[copy.length - 1] = { ...last, text: `${last.text}${chunk}` };
-        return copy;
-      });
-    };
+    setPendingRequest({ text, messageId });
 
     try {
       await streamLecture({
@@ -51,24 +60,49 @@ export function LectureModePage() {
           onReconnectAttempt: (attempt) => setReconnectAttempt(attempt),
         },
       });
+      setPendingRequest(null);
+      return true;
     } catch (e) {
       if (e instanceof ApiError && e.status === 429) {
         setStreamError(mapLimitDetail(e.detail));
       } else {
-        setStreamError('Ошибка потока. Нажмите повторить.');
-        try {
-          const fallback = await api.lectureJson(lessonId, text, messageId);
-          setMessages((prev) => {
-            const copy = [...prev];
-            copy[copy.length - 1] = { role: 'assistant', text: fallback.reply };
-            return copy;
-          });
-        } catch {
-          // keep recoverable error
-        }
+        setStreamError('Ошибка потока. Нажмите «Повторить» для реконнекта или fallback.');
       }
+      return false;
     } finally {
       setIsStreaming(false);
+    }
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!input.trim()) return;
+    const text = input.trim();
+    const messageId = crypto.randomUUID();
+    setMessages((m) => [...m, { role: 'user', text }, { role: 'assistant', text: '' }]);
+    setInput('');
+    await runLectureStream(text, messageId);
+  }
+
+  async function retryLast() {
+    if (!pendingRequest || isStreaming) return;
+
+    const streamOk = await runLectureStream(pendingRequest.text, pendingRequest.messageId);
+    if (streamOk) return;
+
+    try {
+      const fallback = await api.lectureJson(lessonId, pendingRequest.text, pendingRequest.messageId);
+      setMessages((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = { role: 'assistant', text: fallback.reply };
+        return copy;
+      });
+      setStreamError(null);
+      setPendingRequest(null);
+    } catch {
+      removeLastAssistant();
+      setMessages((m) => [...m, { role: 'assistant', text: 'Не удалось восстановить поток. Попробуйте отправить вопрос ещё раз.' }]);
+      setStreamError('Поток не восстановлен. Можно отправить вопрос заново.');
     }
   }
 
@@ -84,6 +118,11 @@ export function LectureModePage() {
       {isStreaming && <p className="muted">Генерация ответа...</p>}
       {reconnectAttempt > 0 && isStreaming && <p className="muted">Переподключение потока… попытка {reconnectAttempt}</p>}
       {streamError && <p className="error">{streamError}</p>}
+      {!!streamError && !!pendingRequest && (
+        <button type="button" className="ghost-btn" onClick={() => void retryLast()} disabled={isStreaming}>
+          Повторить
+        </button>
+      )}
       <form onSubmit={submit} className="composer">
         <input value={input} onChange={(e) => setInput(e.target.value)} maxLength={4000} placeholder="Ваш вопрос" />
         <button type="submit" disabled={isStreaming}>Send</button>

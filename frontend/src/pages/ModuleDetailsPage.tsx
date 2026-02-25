@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useProgress } from '../hooks/useProgress';
@@ -14,12 +14,26 @@ export function ModuleDetailsPage() {
   const { moduleId } = useParams();
   const [module, setModule] = useState<ModuleDetailsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const { data: progress } = useProgress();
 
-  useEffect(() => {
+  const loadModule = useCallback(async () => {
     if (!moduleId) return;
-    api.moduleById(moduleId).then(setModule).catch(() => setError('Ошибка загрузки модуля'));
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await api.moduleById(moduleId);
+      setModule(response);
+    } catch {
+      setError('Ошибка загрузки модуля');
+    } finally {
+      setLoading(false);
+    }
   }, [moduleId]);
+
+  useEffect(() => {
+    void loadModule();
+  }, [loadModule]);
 
   const lessonStatuses = useMemo(() => {
     const statuses = new Map<string, LessonStatus>();
@@ -27,8 +41,16 @@ export function ModuleDetailsPage() {
     return statuses;
   }, [progress]);
 
-  if (error) return <p>{error}</p>;
-  if (!module) return <p>Loading module...</p>;
+  if (loading) return <p>Loading module...</p>;
+  if (error) {
+    return (
+      <section>
+        <p className="error">{error}</p>
+        <button type="button" onClick={() => void loadModule()}>Повторить</button>
+      </section>
+    );
+  }
+  if (!module) return <p>Модуль не найден.</p>;
 
   return (
     <section>

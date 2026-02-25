@@ -164,6 +164,20 @@
 - Добавлен Telegram auth callback endpoint с HMAC/freshness валидацией и тестами.
 - Добавлена bot-id binding проверка для Telegram auth (через resolve_bot_id/getMe) и тест mismatch-case.
 
+## 2026-02-25
+- Продолжена фронтовая реализация в `llm-handbook-mvp` строго по frontend state maps / readiness-критериям.
+- Усилен recoverable flow для Lecture mode:
+  - добавлен явный сценарий `LectureRecoverableError -> Retry` в UI (кнопка «Повторить»),
+  - сохранён pending request (`text + messageId`) для контролируемой попытки восстановления,
+  - при неуспехе reconnect добавлен JSON fallback и диагностическое сообщение без «тихого» обрыва.
+- Улучшены состояния страниц модулей:
+  - `ModulesPage`: добавлены явные `loading/error/empty` с действием «Повторить»,
+  - `ModuleDetailsPage`: добавлены `loading/error/not-found` и ручной retry.
+- Прогнаны фронтовые quality gates после изменений:
+  - `npm run lint` → pass
+  - `npm run test -- --run` → pass (2/2)
+  - `npm run build` → pass
+
 ## 2026-02-24
 - Продолжена фронтовая реализация строго в репозитории `/home/claw/llm-handbook-mvp`.
 - Перенесены и закреплены методические alias-артефакты фронта:

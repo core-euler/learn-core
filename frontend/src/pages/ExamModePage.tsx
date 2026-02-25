@@ -10,24 +10,52 @@ export function ExamModePage() {
   const [exam, setExam] = useState<ExamStartResponse | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<ExamFinishResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
 
   const start = async () => {
     setResult(null);
-    setExam(await api.examStart(lessonId));
+    setError(null);
+    setIsStarting(true);
+    try {
+      setExam(await api.examStart(lessonId));
+    } catch {
+      setError('Не удалось запустить экзамен.');
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   const finish = async () => {
-    if (!exam) return;
-    const payload = Object.entries(answers).map(([question_id, answer]) => ({ question_id, answer }));
-    setResult(await api.examFinish(exam.session_id, payload));
+    if (!exam || isFinishing) return;
+    setError(null);
+    setIsFinishing(true);
+    try {
+      const payload = Object.entries(answers).map(([question_id, answer]) => ({ question_id, answer }));
+      setResult(await api.examFinish(exam.session_id, payload));
+    } catch {
+      setError('Не удалось завершить экзамен. Проверьте ответы и повторите.');
+    } finally {
+      setIsFinishing(false);
+    }
   };
 
   return (
     <div className="chat-panel">
       {!exam ? (
-        <button onClick={start}>Start exam</button>
+        <div>
+          <button onClick={start} disabled={isStarting}>{isStarting ? 'Starting...' : 'Start exam'}</button>
+          {error && (
+            <div>
+              <p className="error">{error}</p>
+              <button type="button" onClick={start} disabled={isStarting}>Повторить</button>
+            </div>
+          )}
+        </div>
       ) : (
         <div>
+          {exam.questions.length === 0 && <p className="muted">Вопросы пока не получены.</p>}
           {exam.questions.map((q) => (
             <div key={q.id}>
               <p>{q.text}</p>
@@ -41,7 +69,8 @@ export function ExamModePage() {
               )}
             </div>
           ))}
-          <button onClick={finish}>Finish exam</button>
+          <button onClick={finish} disabled={isFinishing}>{isFinishing ? 'Finishing...' : 'Finish exam'}</button>
+          {error && <p className="error">{error}</p>}
         </div>
       )}
 

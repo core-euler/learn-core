@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, Outlet, useOutletContext, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import type { AppShellContext } from '../layouts/AppLayout';
@@ -14,21 +14,30 @@ export function LessonWorkspacePage() {
   const [content, setContent] = useState<LessonContentResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { progress } = useOutletContext<AppShellContext>();
 
-  useEffect(() => {
+  const loadLesson = useCallback(async () => {
+    setLoading(true);
     setError(null);
     setLocked(false);
-    api.lessonContent(lessonId)
-      .then(setContent)
-      .catch((e) => {
-        if (e instanceof ApiError && e.detail === 'lesson_locked') {
-          setLocked(true);
-          return;
-        }
-        setError('Ошибка загрузки урока');
-      });
+    try {
+      const response = await api.lessonContent(lessonId);
+      setContent(response);
+    } catch (e) {
+      if (e instanceof ApiError && e.detail === 'lesson_locked') {
+        setLocked(true);
+        return;
+      }
+      setError('Ошибка загрузки урока');
+    } finally {
+      setLoading(false);
+    }
   }, [lessonId]);
+
+  useEffect(() => {
+    void loadLesson();
+  }, [loadLesson]);
 
   const progressLabel = useMemo(() => {
     if (!progress) return null;
@@ -48,8 +57,16 @@ export function LessonWorkspacePage() {
     );
   }
 
-  if (error) return <p>{error}</p>;
-  if (!content) return <p>Loading lesson...</p>;
+  if (loading) return <p>Loading lesson...</p>;
+  if (error) {
+    return (
+      <section>
+        <p className="error">{error}</p>
+        <button type="button" onClick={() => void loadLesson()}>Повторить</button>
+      </section>
+    );
+  }
+  if (!content) return <p>Материал урока недоступен.</p>;
 
   return (
     <section className="workspace">

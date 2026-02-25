@@ -177,6 +177,12 @@
   - `npm run lint` → pass
   - `npm run test -- --run` → pass (2/2)
   - `npm run build` → pass
+- Следующий фронтовый инкремент по state maps (Lesson/Consultant/Exam):
+  - `LessonWorkspacePage`: добавлен explicit retry при ошибке загрузки контента и empty-state `Материал урока недоступен`.
+  - `ConsultantModePage`: добавлены состояния `progress loading error`, retry на загрузке прогресса, submitting-state и empty-state диалога.
+  - `ExamModePage`: добавлены recoverable состояния start/finish (`isStarting`, `isFinishing`, error + retry), включая обработку пустого списка вопросов.
+- Повторный прогон quality gates после инкремента:
+  - `npm run lint && npm run test -- --run && npm run build` → pass.
 
 ## 2026-02-24
 - Продолжена фронтовая реализация строго в репозитории `/home/claw/llm-handbook-mvp`.

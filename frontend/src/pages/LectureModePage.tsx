@@ -5,7 +5,7 @@ import { api } from '../api/client';
 import { streamLecture } from '../api/lectureStream';
 import { ApiError, mapLimitDetail } from '../utils/http';
 
-type Ctx = { lessonId: string };
+type Ctx = { lessonId: string; onLessonCompleted: () => Promise<void> };
 
 type PendingRequest = {
   text: string;
@@ -13,7 +13,7 @@ type PendingRequest = {
 };
 
 export function LectureModePage() {
-  const { lessonId } = useOutletContext<Ctx>();
+  const { lessonId, onLessonCompleted } = useOutletContext<Ctx>();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Array<{ role: string; text: string }>>([
     { role: 'assistant', text: 'Добро пожаловать в лекцию. Задайте вопрос по материалу.' },
@@ -23,6 +23,7 @@ export function LectureModePage() {
   const [lastEventId, setLastEventId] = useState<string | undefined>();
   const [reconnectAttempt, setReconnectAttempt] = useState<number>(0);
   const [pendingRequest, setPendingRequest] = useState<PendingRequest | null>(null);
+  const [completionState, setCompletionState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
 
   const updateAssistant = (chunk: string) => {
     setMessages((prev) => {
@@ -106,6 +107,17 @@ export function LectureModePage() {
     }
   }
 
+  async function completeLesson() {
+    if (completionState === 'submitting') return;
+    setCompletionState('submitting');
+    try {
+      await onLessonCompleted();
+      setCompletionState('success');
+    } catch {
+      setCompletionState('error');
+    }
+  }
+
   return (
     <div className="chat-panel">
       <div className="chat-log">
@@ -127,7 +139,11 @@ export function LectureModePage() {
         <input value={input} onChange={(e) => setInput(e.target.value)} maxLength={4000} placeholder="Ваш вопрос" />
         <button type="submit" disabled={isStreaming}>Send</button>
       </form>
-      <button className="ghost-btn" onClick={() => api.completeLesson(lessonId)}>Завершить урок</button>
+      <button className="ghost-btn" onClick={() => void completeLesson()} disabled={completionState === 'submitting'}>
+        {completionState === 'submitting' ? 'Завершаем...' : 'Завершить урок'}
+      </button>
+      {completionState === 'success' && <p className="muted">Урок отмечен как завершённый. Прогресс обновлён.</p>}
+      {completionState === 'error' && <p className="error">Не удалось завершить урок. Попробуйте ещё раз.</p>}
     </div>
   );
 }

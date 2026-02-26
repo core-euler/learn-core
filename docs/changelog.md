@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-02-26
+- Frontend (lecture mode) синхронизирован со state map переходом `LessonCompletedToast -> progress refresh`:
+  - в контекст lesson workspace добавлен `onLessonCompleted` callback с `POST /api/progress/lessons/{id}/complete` + `reloadProgress`,
+  - в `LectureModePage` добавлен управляемый completion flow (`submitting/success/error`) вместо «немого» клика,
+  - UX теперь явно показывает результат завершения урока и обновление прогресса в app shell.
+- Quality gate фронта после изменений: `lint` ✅, `vitest` ✅ (2/2), `build` ✅.
+
 ## 2026-02-23
 - Усилен frontend documentation pack по методике LLM-Driven:
   - добавлен канонический API baseline `docs/frontend-api-canonical.md`,

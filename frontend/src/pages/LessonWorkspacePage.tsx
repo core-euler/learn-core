@@ -7,6 +7,7 @@ import { ApiError } from '../utils/http';
 
 type LessonWorkspaceContext = {
   lessonId: string;
+  onLessonCompleted: () => Promise<void>;
 };
 
 export function LessonWorkspacePage() {
@@ -15,7 +16,7 @@ export function LessonWorkspacePage() {
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { progress } = useOutletContext<AppShellContext>();
+  const { progress, reloadProgress } = useOutletContext<AppShellContext>();
 
   const loadLesson = useCallback(async () => {
     setLoading(true);
@@ -82,7 +83,17 @@ export function LessonWorkspacePage() {
       </div>
 
       <div className="workspace-chat-zone">
-        <Outlet context={{ lessonId } satisfies LessonWorkspaceContext} />
+        <Outlet
+          context={
+            {
+              lessonId,
+              onLessonCompleted: async () => {
+                await api.completeLesson(lessonId);
+                await reloadProgress();
+              },
+            } satisfies LessonWorkspaceContext
+          }
+        />
       </div>
 
       <article className="lesson-material">

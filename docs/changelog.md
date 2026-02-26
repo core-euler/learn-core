@@ -6,6 +6,10 @@
   - в `LectureModePage` добавлен управляемый completion flow (`submitting/success/error`) вместо «немого» клика,
   - UX теперь явно показывает результат завершения урока и обновление прогресса в app shell.
 - Quality gate фронта после изменений: `lint` ✅, `vitest` ✅ (2/2), `build` ✅.
+- Добавлены frontend unit/integration tests для lecture completion flow (`frontend/src/test/lecture-mode.test.tsx`):
+  - success path: после клика “Завершить урок” отображается success-state,
+  - error path: при ошибке отображается recoverable error-state.
+- Обновлён фронтовый test baseline: `vitest` ✅ (4/4).
 
 ## 2026-02-23
 - Усилен frontend documentation pack по методике LLM-Driven:

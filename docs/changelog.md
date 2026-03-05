@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-05
+- Documentation consistency pass across project status docs:
+  - `README.md`: удалён устаревший пункт про "отсутствующий frontend"; зафиксирован актуальный residual gap (full browser-level UI e2e как будущий gate),
+  - `docs/release-readiness.md`: обновлён last sync marker,
+  - `docs/implementation-checklist.md`: обновлён last update marker.
+- Текущее состояние зафиксировано как frontend-реализованный baseline с дальнейшим фокусом на quality gates и e2e hardening.
+
 ## 2026-02-26
 - Frontend (lecture mode) синхронизирован со state map переходом `LessonCompletedToast -> progress refresh`:
   - в контекст lesson workspace добавлен `onLessonCompleted` callback с `POST /api/progress/lessons/{id}/complete` + `reloadProgress`,

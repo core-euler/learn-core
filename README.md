@@ -2,7 +2,7 @@
 
 Documentation-first + implementation repository for LLM Handbook MVP.
 
-## Current status (2026-02-23)
+## Current status (2026-03-05)
 - MVP backend scope implemented (auth/session, course/progress, AI modes via provider adapter + minimal RAG contract, SSE reliability, limits, Telegram auth callback).
 - MVP frontend app shell implemented (`frontend/`, Vite + React + TS): auth routes, protected app shell, dashboard, modules/lessons states, lesson workspace with lecture/exam/consultant flows, limits/error mapping.
 - Security hardening baseline закрыт: CSRF double-submit, test-route isolation, production KDF policy.
@@ -59,5 +59,5 @@ For clean PostgreSQL bootstrap, see `docs/runbook.md`.
 MVP-ready for closed rollout по зафиксированным quality gates (см. `docs/release-readiness.md`).
 
 Residual known gaps перед wider rollout:
-- отсутствует реализованный frontend-клиент и UI e2e поверх реального приложения (backend/API readiness подтверждены);
+- full browser-level UI e2e (Playwright-класс) ещё не зафиксирован как обязательный release gate;
 - есть non-blocking технический долг по deprecation warnings (FastAPI `on_event`, per-request cookies в testclient).

@@ -1,6 +1,6 @@
 # Implementation Checklist (Execution Plan)
 
-_Last update: 2026-02-23_
+_Last update: 2026-03-05_
 
 Цель: довести текущую реализацию до управляемого MVP-ready состояния без распыления.
 

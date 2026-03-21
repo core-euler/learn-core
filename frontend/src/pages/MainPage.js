@@ -82,13 +82,13 @@ const MainPage = () => {
         const contentResponse = await lessonsAPI.getContent(lesson.id);
         const content = contentResponse.data;
 
-        // Add initial AI message with lesson intro
+        // Display FULL lesson content as first message
         if (content.content) {
           setMessages([
             {
-              id: 'intro',
+              id: 'lesson-content',
               role: 'assistant',
-              content: content.content.slice(0, 500) + '...\n\nЗадавайте вопросы по материалу!',
+              content: content.content + '\n\n---\n\n💬 Прочитали материал? Задавайте вопросы!',
             },
           ]);
         }
@@ -100,17 +100,17 @@ const MainPage = () => {
         if (mockContent) {
           setMessages([
             {
-              id: 'intro',
+              id: 'lesson-content',
               role: 'assistant',
-              content: mockContent.content + '\n\n📚 Задавайте вопросы по материалу!',
+              content: mockContent.content + '\n\n---\n\n💬 Прочитали материал? Задавайте вопросы!',
             },
           ]);
         } else {
           setMessages([
             {
-              id: 'intro',
+              id: 'lesson-content',
               role: 'assistant',
-              content: `Добро пожаловать на урок: **${lesson.title}**\n\nЗадавайте вопросы, и я помогу разобраться в материале!`,
+              content: `# ${lesson.title}\n\n_Контент урока будет загружен с бэкенда_\n\n---\n\n💬 Задавайте вопросы по материалу!`,
             },
           ]);
         }

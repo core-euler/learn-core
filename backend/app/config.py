@@ -42,9 +42,18 @@ class Settings:
         "LLM_FALLBACK_CONSULTANT",
         "Консультант временно недоступен. Попробуй повторить запрос позже.",
     )
+    llm_provider: str = os.getenv("LLM_PROVIDER", "default")  # default|cometapi
+    cometapi_base_url: str = os.getenv("COMETAPI_BASE_URL", "https://api.cometapi.com")
+    cometapi_api_key: str = os.getenv("COMETAPI_API_KEY", "")
+    cometapi_chat_model: str = os.getenv("COMETAPI_CHAT_MODEL", "gpt-5.2")
+    cometapi_exam_model: str = os.getenv("COMETAPI_EXAM_MODEL", "gpt-5.2")
+    cometapi_embed_model: str = os.getenv("COMETAPI_EMBED_MODEL", "text-embedding-3-small")
 
     # Minimal RAG contract policy
     rag_top_k: int = int(os.getenv("RAG_TOP_K", "3"))
+    rag_chunk_size_chars: int = int(os.getenv("RAG_CHUNK_SIZE_CHARS", "900"))
+    rag_chunk_overlap_chars: int = int(os.getenv("RAG_CHUNK_OVERLAP_CHARS", "120"))
+    rag_embedding_batch_size: int = int(os.getenv("RAG_EMBEDDING_BATCH_SIZE", "32"))
 
 
 settings = Settings()

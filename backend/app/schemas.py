@@ -16,6 +16,8 @@ class UserOut(BaseModel):
     id: str
     email: Optional[str]
     first_name: str
+    last_name: Optional[str] = None
+    full_name: Optional[str] = None
     auth_method: str
 
 

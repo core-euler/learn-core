@@ -14,6 +14,7 @@ class User(Base):
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     first_name: Mapped[str] = mapped_column(String(255))
+    last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     auth_method: Mapped[str] = mapped_column(String(20))
     telegram_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     telegram_username: Mapped[str | None] = mapped_column(String(255), nullable=True)

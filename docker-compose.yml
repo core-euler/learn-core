@@ -24,13 +24,6 @@ services:
       dockerfile: backend/Dockerfile
     env_file:
       - .env
-    environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://llm:llm@db:5432/llm_handbook}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-prod}
-      APP_ENV: ${APP_ENV:-dev}
-      COOKIE_SECURE: ${COOKIE_SECURE:-false}
-      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
-      CONTENT_VALIDATE_ON_STARTUP: ${CONTENT_VALIDATE_ON_STARTUP:-true}
     depends_on:
       db:
         condition: service_healthy
@@ -48,6 +41,33 @@ services:
       start_period: 10s
     ports:
       - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    env_file:
+      - frontend/.env.docker
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env
+    environment:
+      TELEGRAM_AUTH_FRONTEND_URL: ${TELEGRAM_AUTH_FRONTEND_URL:-http://localhost:3000}
+      TELEGRAM_AUTH_CALLBACK_PATH: ${TELEGRAM_AUTH_CALLBACK_PATH:-/auth/telegram/callback}
+    command: ["python", "backend/bot/telegram_auth_bot.py"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:

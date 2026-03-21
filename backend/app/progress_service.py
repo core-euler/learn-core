@@ -1,26 +1,107 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .entities import User
 from .course_entities import Module, Lesson, UserLessonProgress, UserModuleProgress
 
 
 def bootstrap_progress_for_user(db: Session, user_id: str) -> None:
-    modules = db.execute(select(Module).where(Module.is_published == True).order_by(Module.order_index.asc())).scalars().all()
+    ensure_progress_for_user(db, user_id)
+
+
+def ensure_progress_for_user(db: Session, user_id: str) -> None:
+    modules = (
+        db.execute(select(Module).where(Module.is_published == True).order_by(Module.order_index.asc())).scalars().all()
+    )
     if not modules:
         return
 
-    first_module_id = modules[0].id
+    module_progress = {
+        row.module_id: row
+        for row in db.execute(select(UserModuleProgress).where(UserModuleProgress.user_id == user_id)).scalars().all()
+    }
     for m in modules:
-        mp = UserModuleProgress(user_id=user_id, module_id=m.id, status="available" if m.id == first_module_id else "locked")
-        db.add(mp)
+        if m.id not in module_progress:
+            db.add(UserModuleProgress(user_id=user_id, module_id=m.id, status="locked"))
 
+    lesson_progress = {
+        row.lesson_id: row
+        for row in db.execute(select(UserLessonProgress).where(UserLessonProgress.user_id == user_id)).scalars().all()
+    }
     for m in modules:
-        lessons = db.execute(select(Lesson).where(Lesson.module_id == m.id, Lesson.is_published == True).order_by(Lesson.order_index.asc())).scalars().all()
-        for idx, l in enumerate(lessons):
-            status = "available" if m.id == first_module_id and idx == 0 else "locked"
-            db.add(UserLessonProgress(user_id=user_id, lesson_id=l.id, status=status))
+        lessons = (
+            db.execute(
+                select(Lesson)
+                .where(Lesson.module_id == m.id, Lesson.is_published == True)
+                .order_by(Lesson.order_index.asc())
+            )
+            .scalars()
+            .all()
+        )
+        for lesson in lessons:
+            if lesson.id not in lesson_progress:
+                db.add(UserLessonProgress(user_id=user_id, lesson_id=lesson.id, status="locked"))
+
+    db.flush()
+
+    published_module_ids = {m.id for m in modules}
+    has_open_module = db.execute(
+        select(UserModuleProgress).where(
+            UserModuleProgress.user_id == user_id,
+            UserModuleProgress.module_id.in_(published_module_ids),
+            UserModuleProgress.status.in_(["available", "completed"]),
+        )
+    ).scalars().first()
+    if not has_open_module:
+        first_module = modules[0]
+        first_mp = db.execute(
+            select(UserModuleProgress).where(
+                UserModuleProgress.user_id == user_id,
+                UserModuleProgress.module_id == first_module.id,
+            )
+        ).scalar_one()
+        first_mp.status = "available"
+
+    all_published_lessons = (
+        db.execute(select(Lesson).where(Lesson.is_published == True).order_by(Lesson.order_index.asc())).scalars().all()
+    )
+    published_lesson_ids = {lesson.id for lesson in all_published_lessons}
+    has_open_lesson = None
+    if published_lesson_ids:
+        has_open_lesson = db.execute(
+            select(UserLessonProgress).where(
+                UserLessonProgress.user_id == user_id,
+                UserLessonProgress.lesson_id.in_(published_lesson_ids),
+                UserLessonProgress.status.in_(["available", "completed"]),
+            )
+        ).scalars().first()
+
+    if not has_open_lesson and modules:
+        first_lesson = (
+            db.execute(
+                select(Lesson)
+                .where(Lesson.module_id == modules[0].id, Lesson.is_published == True)
+                .order_by(Lesson.order_index.asc())
+            )
+            .scalars()
+            .first()
+        )
+        if first_lesson:
+            first_lp = db.execute(
+                select(UserLessonProgress).where(
+                    UserLessonProgress.user_id == user_id,
+                    UserLessonProgress.lesson_id == first_lesson.id,
+                )
+            ).scalar_one()
+            first_lp.status = "available"
 
     db.commit()
+
+
+def ensure_progress_for_all_users(db: Session) -> None:
+    user_ids = db.execute(select(User.id)).scalars().all()
+    for user_id in user_ids:
+        ensure_progress_for_user(db, user_id)
 
 
 def complete_lesson_and_unlock_next(db: Session, user_id: str, lesson_id: str) -> None:

@@ -29,7 +29,8 @@ def test_telegram_callback_happy_path():
     payload = {
         'id': '123456',
         'first_name': 'Kolya',
-        'username': 'okoloboga',
+        'last_name': 'Ivanov',
+        'username': 'core-euler',
         'photo_url': 'https://example.com/a.jpg',
         'auth_date': str(int(time.time())),
     }
@@ -40,6 +41,12 @@ def test_telegram_callback_happy_path():
     assert 'access_token' in r.cookies
     assert 'refresh_token' in r.cookies
 
+    me = client.get('/api/auth/me', cookies={'access_token': r.cookies.get('access_token')})
+    assert me.status_code == 200
+    assert me.json()['first_name'] == 'Kolya'
+    assert me.json()['last_name'] == 'Ivanov'
+    assert me.json()['full_name'] == 'Kolya Ivanov'
+
 
 def test_telegram_callback_invalid_hash_rejected():
     settings.telegram_bot_token = 'test-bot-token'
@@ -48,7 +55,8 @@ def test_telegram_callback_invalid_hash_rejected():
     payload = {
         'id': '123456',
         'first_name': 'Kolya',
-        'username': 'okoloboga',
+        'last_name': '',
+        'username': 'core-euler',
         'photo_url': 'https://example.com/a.jpg',
         'auth_date': str(int(time.time())),
         'hash': 'badhash',
@@ -64,7 +72,8 @@ def test_telegram_callback_stale_auth_rejected():
     payload = {
         'id': '123456',
         'first_name': 'Kolya',
-        'username': 'okoloboga',
+        'last_name': '',
+        'username': 'core-euler',
         'photo_url': 'https://example.com/a.jpg',
         'auth_date': str(int(time.time()) - 90000),
     }
@@ -83,7 +92,8 @@ def test_telegram_bot_binding_rejected_on_mismatch():
     payload = {
         'id': '123456',
         'first_name': 'Kolya',
-        'username': 'okoloboga',
+        'last_name': '',
+        'username': 'core-euler',
         'photo_url': 'https://example.com/a.jpg',
         'auth_date': str(int(time.time())),
     }

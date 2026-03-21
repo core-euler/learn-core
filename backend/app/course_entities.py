@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import uuid
 
-from sqlalchemy import String, Integer, DateTime, Boolean, ForeignKey
+from sqlalchemy import String, Integer, DateTime, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -11,6 +11,7 @@ class Module(Base):
     __tablename__ = "modules"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    slug: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     title: Mapped[str] = mapped_column(String(500))
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, index=True)
@@ -20,9 +21,11 @@ class Module(Base):
 
 class Lesson(Base):
     __tablename__ = "lessons"
+    __table_args__ = (UniqueConstraint("module_id", "slug", name="uq_lessons_module_slug"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     module_id: Mapped[str] = mapped_column(String(36), ForeignKey("modules.id"), index=True)
+    slug: Mapped[str | None] = mapped_column(String(255), index=True, nullable=True)
     title: Mapped[str] = mapped_column(String(500))
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, index=True)

@@ -2,10 +2,20 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY pyproject.toml ./
 COPY backend ./backend
+COPY backend/requirements-bot.txt ./backend/requirements-bot.txt
 
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir \
+  "fastapi>=0.115.0" \
+  "uvicorn>=0.30.0" \
+  "pydantic>=2.8.0" \
+  "python-jose[cryptography]>=3.3.0" \
+  "email-validator>=2.2.0" \
+  "sqlalchemy>=2.0.36" \
+  "psycopg[binary]>=3.2.3" \
+  "argon2-cffi>=23.1.0" \
+  "alembic>=1.13.0" \
+  && pip install --no-cache-dir -r backend/requirements-bot.txt
 
 EXPOSE 8000
 

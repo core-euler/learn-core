@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta, timezone
 import secrets
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Response, Cookie, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.orm import Session
 
 from .schemas import RegisterRequest, LoginRequest, RegisterResponse, UserOut
@@ -15,12 +17,14 @@ from .security import (
     hash_refresh_token,
     decode_access_token,
 )
-from .database import get_db, Base, engine
+from .database import get_db, Base, engine, SessionLocal
 from .entities import User, Session as DbSession
 from .course_entities import Module, Lesson, UserLessonProgress, UserModuleProgress
 from .progress_service import bootstrap_progress_for_user, complete_lesson_and_unlock_next
+from .course_sync import sync_course_catalog_from_index
 from .course_schemas import ModuleOut, LessonOut, LessonContentOut
 from .ai_entities import AiSession, AiMessage
+from .rag_entities import RagChunk, RagIndexState
 from .ai_schemas import LectureRequest, ExamStartRequest, ConsultantRequest
 from .ai_service import ensure_mode_access, create_ai_session
 from .usage_entities import UserUsage
@@ -28,17 +32,48 @@ from .limits_service import check_and_increment_usage, DAILY_LIMIT
 from .rate_limit_entities import UserRateWindow
 from .minute_limit_service import check_minute_limit, MINUTE_LIMIT
 from .streaming import build_text_stream
-from .llm_provider import DefaultLlmProviderAdapter, LlmPolicy, call_with_fallback
-from .retrieval import RetrievalQuery, StubChunkIndex, StubRetriever
+from .llm_provider import DefaultLlmProviderAdapter, LlmPolicy, call_with_fallback, build_llm_adapter
+from .retrieval import (
+    ChunkMetadata,
+    EmbeddedChunk,
+    RetrievalQuery,
+    build_retriever_from_embedded_chunks,
+    compute_curriculum_content_signature,
+    embed_curriculum_chunks,
+    load_curriculum_chunks,
+    StubChunkIndex,
+    StubRetriever,
+)
 from .env import is_test_mode, cookie_secure, cookie_samesite
 from .telegram_auth import validate_telegram_payload, resolve_bot_id
 from .config import settings
-from .content_index import validate_default_content_index
+from .content_index import validate_default_content_index, default_index_path
 import os
 import json
 
 app = FastAPI(title="LLM Handbook MVP Backend")
-app.state.llm_adapter = DefaultLlmProviderAdapter()
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOW_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if origin.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.state.llm_adapter = build_llm_adapter(
+    provider=settings.llm_provider,
+    comet_api_key=settings.cometapi_api_key,
+    comet_base_url=settings.cometapi_base_url,
+    comet_chat_model=settings.cometapi_chat_model,
+    comet_exam_model=settings.cometapi_exam_model,
+)
 app.state.retriever = StubRetriever(StubChunkIndex.empty())
 app.state.llm_policy = LlmPolicy(
     timeout_seconds=settings.llm_timeout_seconds,
@@ -59,6 +94,13 @@ def on_startup():
     if settings.content_validate_on_startup:
         validate_default_content_index()
     Base.metadata.create_all(bind=engine)
+    with SessionLocal() as db:
+        sync_course_catalog_from_index(
+            db,
+            index_path=default_index_path(),
+            repo_root=Path(__file__).resolve().parent.parent,
+        )
+    app.state.retriever = _build_runtime_retriever()
 
 
 def _set_auth_cookies(resp: Response, access: str, refresh: str) -> None:
@@ -78,6 +120,207 @@ def require_csrf(request: Request, csrf_token: str | None = Cookie(default=None)
         raise HTTPException(status_code=403, detail="csrf_failed")
 
 
+def _extract_embeddings(payload: dict, expected_len: int) -> list[list[float]]:
+    data = payload.get("data")
+    if not isinstance(data, list):
+        raise RuntimeError("embeddings_missing_data")
+
+    rows: list[tuple[int, list[float]]] = []
+    for row in data:
+        if not isinstance(row, dict):
+            continue
+        emb = row.get("embedding")
+        idx = row.get("index", 0)
+        if isinstance(idx, int) and isinstance(emb, list) and emb:
+            rows.append((idx, [float(x) for x in emb]))
+
+    if not rows:
+        raise RuntimeError("embeddings_empty")
+
+    rows.sort(key=lambda item: item[0])
+    vectors = [vec for _, vec in rows]
+    if len(vectors) != expected_len:
+        raise RuntimeError("embeddings_length_mismatch")
+    return vectors
+
+
+def _build_embedding_callable():
+    adapter = app.state.llm_adapter
+    if not hasattr(adapter, "embed_texts"):
+        return None
+
+    def _embed_texts(inputs: list[str]) -> list[list[float]]:
+        payload = adapter.embed_texts(model=settings.cometapi_embed_model, inputs=inputs)
+        if not isinstance(payload, dict):
+            raise RuntimeError("embeddings_invalid_payload")
+        return _extract_embeddings(payload, expected_len=len(inputs))
+
+    return _embed_texts
+
+
+def _load_cached_chunks(db: Session, *, content_signature: str) -> list[EmbeddedChunk]:
+    rows = db.execute(
+        select(RagChunk)
+        .where(RagChunk.content_signature == content_signature)
+        .order_by(RagChunk.module_id.asc(), RagChunk.lesson_id.asc(), RagChunk.start_char.asc())
+    ).scalars().all()
+    loaded: list[EmbeddedChunk] = []
+    for row in rows:
+        embedding: list[float] | None = None
+        if row.embedding_json:
+            try:
+                parsed = json.loads(row.embedding_json)
+                if isinstance(parsed, list):
+                    embedding = [float(x) for x in parsed]
+            except Exception:
+                embedding = None
+        loaded.append(
+            EmbeddedChunk(
+                metadata=ChunkMetadata(
+                    chunk_id=row.chunk_id,
+                    module_id=row.module_id,
+                    lesson_id=row.lesson_id,
+                    source_path=row.source_path,
+                    start_char=row.start_char,
+                    end_char=row.end_char,
+                ),
+                text=row.text,
+                embedding=embedding,
+            )
+        )
+    return loaded
+
+
+def _persist_rag_snapshot(
+    db: Session,
+    *,
+    content_signature: str,
+    chunks: list[EmbeddedChunk],
+    embeddings_ready: bool,
+) -> None:
+    db.execute(delete(RagChunk))
+    for chunk in chunks:
+        db.add(
+            RagChunk(
+                content_signature=content_signature,
+                chunk_id=chunk.metadata.chunk_id,
+                module_id=chunk.metadata.module_id,
+                lesson_id=chunk.metadata.lesson_id,
+                source_path=chunk.metadata.source_path,
+                start_char=chunk.metadata.start_char,
+                end_char=chunk.metadata.end_char,
+                text=chunk.text,
+                embedding_json=json.dumps(chunk.embedding) if chunk.embedding else None,
+            )
+        )
+
+    state = db.get(RagIndexState, 1)
+    if not state:
+        state = RagIndexState(id=1)
+        db.add(state)
+    state.content_signature = content_signature
+    state.embed_model = settings.cometapi_embed_model
+    state.chunk_size_chars = settings.rag_chunk_size_chars
+    state.chunk_overlap_chars = settings.rag_chunk_overlap_chars
+    state.embeddings_ready = embeddings_ready
+    state.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+
+def _build_runtime_retriever():
+    index_path = default_index_path()
+    repo_root = Path(__file__).resolve().parent.parent
+    embed_fn = _build_embedding_callable()
+
+    try:
+        signature = compute_curriculum_content_signature(
+            index_path=index_path,
+            repo_root=repo_root,
+            chunk_size_chars=settings.rag_chunk_size_chars,
+            chunk_overlap_chars=settings.rag_chunk_overlap_chars,
+            embed_model=settings.cometapi_embed_model,
+        )
+    except Exception:
+        return StubRetriever(StubChunkIndex.empty())
+
+    try:
+        with SessionLocal() as db:
+            state = db.get(RagIndexState, 1)
+            if state and state.content_signature == signature:
+                cached = _load_cached_chunks(db, content_signature=signature)
+                if cached:
+                    # If embeddings were not available previously, allow one-time backfill.
+                    if not state.embeddings_ready and embed_fn:
+                        embedded_cached, embeddings_ready = embed_curriculum_chunks(
+                            chunks=cached,
+                            embed_texts=embed_fn,
+                            embedding_batch_size=settings.rag_embedding_batch_size,
+                        )
+                        if embeddings_ready:
+                            _persist_rag_snapshot(
+                                db,
+                                content_signature=signature,
+                                chunks=embedded_cached,
+                                embeddings_ready=True,
+                            )
+                            cached = embedded_cached
+                    return build_retriever_from_embedded_chunks(chunks=cached, embed_texts=embed_fn)
+
+            chunks = load_curriculum_chunks(
+                index_path=index_path,
+                repo_root=repo_root,
+                chunk_size_chars=settings.rag_chunk_size_chars,
+                chunk_overlap_chars=settings.rag_chunk_overlap_chars,
+            )
+            chunks, embeddings_ready = embed_curriculum_chunks(
+                chunks=chunks,
+                embed_texts=embed_fn,
+                embedding_batch_size=settings.rag_embedding_batch_size,
+            )
+            _persist_rag_snapshot(
+                db,
+                content_signature=signature,
+                chunks=chunks,
+                embeddings_ready=embeddings_ready,
+            )
+            return build_retriever_from_embedded_chunks(chunks=chunks, embed_texts=embed_fn)
+    except Exception:
+        return StubRetriever(StubChunkIndex.empty())
+
+
+def _compose_grounded_message(user_message: str, retrieval_result) -> str:
+    if not retrieval_result.chunks:
+        return user_message
+    chunks = []
+    for idx, chunk in enumerate(retrieval_result.chunks, start=1):
+        chunks.append(
+            f"[chunk {idx}] source={chunk.metadata.source_path} score={chunk.score:.4f}\n{chunk.text}"
+        )
+    context_block = "\n\n".join(chunks)
+    return (
+        "Use only the context below to answer. If context is insufficient, say so.\n\n"
+        f"CONTEXT:\n{context_block}\n\n"
+        f"QUESTION:\n{user_message}"
+    )
+
+
+def _compose_full_name(first_name: str, last_name: str | None) -> str:
+    if last_name:
+        return f"{first_name} {last_name}".strip()
+    return first_name
+
+
+def _build_user_out(user: User) -> UserOut:
+    return UserOut(
+        id=user.id,
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        full_name=_compose_full_name(user.first_name, user.last_name),
+        auth_method=user.auth_method,
+    )
+
+
 @app.post("/api/auth/register", response_model=RegisterResponse, status_code=201)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     existing = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
@@ -94,27 +337,34 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     bootstrap_progress_for_user(db, user.id)
-    return RegisterResponse(user=UserOut(id=user.id, email=user.email, first_name=user.first_name, auth_method=user.auth_method))
+    return RegisterResponse(user=_build_user_out(user))
 
 
 @app.get('/api/auth/telegram/callback')
 def auth_telegram_callback(
     id: str,
     first_name: str,
+    last_name: str | None = None,
     username: str | None = None,
     photo_url: str | None = None,
     auth_date: str | None = None,
     hash: str | None = None,
     db: Session = Depends(get_db),
 ):
+    normalized_first_name = first_name.strip()
+    normalized_last_name = (last_name or '').strip() or None
+    normalized_username = (username or '').strip() or None
+    normalized_photo_url = (photo_url or '').strip() or None
+
     if not settings.telegram_bot_token:
         raise HTTPException(status_code=503, detail='telegram_auth_not_configured')
 
     payload = {
         'id': id,
-        'first_name': first_name,
-        'username': username or '',
-        'photo_url': photo_url or '',
+        'first_name': normalized_first_name,
+        'last_name': normalized_last_name or '',
+        'username': normalized_username or '',
+        'photo_url': normalized_photo_url or '',
         'auth_date': auth_date or '',
         'hash': hash or '',
     }
@@ -133,16 +383,24 @@ def auth_telegram_callback(
         user = User(
             email=None,
             password_hash=None,
-            first_name=first_name,
+            first_name=normalized_first_name,
+            last_name=normalized_last_name,
             auth_method='telegram',
             telegram_id=id,
-            telegram_username=username,
-            photo_url=photo_url,
+            telegram_username=normalized_username,
+            photo_url=normalized_photo_url,
         )
         db.add(user)
         db.commit()
         db.refresh(user)
         bootstrap_progress_for_user(db, user.id)
+    else:
+        user.first_name = normalized_first_name
+        user.last_name = normalized_last_name
+        user.telegram_username = normalized_username
+        user.photo_url = normalized_photo_url
+        db.commit()
+        db.refresh(user)
 
     access = create_access_token(user.id)
     refresh = make_refresh_token()
@@ -246,7 +504,7 @@ def me(access_token: str | None = Cookie(default=None), db: Session = Depends(ge
     if not user:
         raise HTTPException(status_code=401, detail="invalid_access")
 
-    return UserOut(id=user.id, email=user.email, first_name=user.first_name, auth_method=user.auth_method)
+    return _build_user_out(user)
 
 
 @app.post("/api/auth/logout")
@@ -291,18 +549,9 @@ def logout_all(access_token: str | None = Cookie(default=None), db: Session = De
 def _test_reset(db: Session = Depends(get_db)):
     if not is_test_mode():
         raise HTTPException(status_code=404, detail='not_found')
+    # Keep test DB schema aligned with latest models between test runs.
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    db.query(UserLessonProgress).delete()
-    db.query(UserModuleProgress).delete()
-    db.query(Lesson).delete()
-    db.query(Module).delete()
-    db.query(AiMessage).delete()
-    db.query(AiSession).delete()
-    db.query(UserUsage).delete()
-    db.query(UserRateWindow).delete()
-    db.query(DbSession).delete()
-    db.query(User).delete()
-    db.commit()
     return {"ok": True, "ts": datetime.now(timezone.utc).isoformat()}
 
 
@@ -330,16 +579,16 @@ def _test_seed_course(db: Session = Depends(get_db)):
     if not is_test_mode():
         raise HTTPException(status_code=404, detail='not_found')
     Base.metadata.create_all(bind=engine)
-    m1 = Module(title='M1', description='m1', order_index=1, is_published=True)
-    m2 = Module(title='M2', description='m2', order_index=2, is_published=True)
+    m1 = Module(slug='m1', title='M1', description='m1', order_index=1, is_published=True)
+    m2 = Module(slug='m2', title='M2', description='m2', order_index=2, is_published=True)
     db.add_all([m1, m2])
     db.commit()
     db.refresh(m1)
     db.refresh(m2)
     db.add_all([
-        Lesson(module_id=m1.id, title='L1', description='l1', order_index=1, md_file_path='content/m1/l1.md', is_published=True),
-        Lesson(module_id=m1.id, title='L2', description='l2', order_index=2, md_file_path='content/m1/l2.md', is_published=True),
-        Lesson(module_id=m2.id, title='L3', description='l3', order_index=1, md_file_path='content/m2/l1.md', is_published=True),
+        Lesson(module_id=m1.id, slug='l1', title='L1', description='l1', order_index=1, md_file_path='content/m1/l1.md', is_published=True),
+        Lesson(module_id=m1.id, slug='l2', title='L2', description='l2', order_index=2, md_file_path='content/m1/l2.md', is_published=True),
+        Lesson(module_id=m2.id, slug='l1', title='L3', description='l3', order_index=1, md_file_path='content/m2/l1.md', is_published=True),
     ])
     db.commit()
     return {'ok': True}
@@ -513,21 +762,27 @@ def chat_lecture(payload: LectureRequest, request: Request, access_token: str | 
     if not ok:
         raise HTTPException(status_code=403, detail=err)
 
+    lesson = db.get(Lesson, payload.lesson_id)
+    if not lesson or not lesson.is_published:
+        raise HTTPException(status_code=404, detail='lesson_not_found')
+
     session = create_ai_session(db, user_id=user_id, mode='lecture', lesson_id=payload.lesson_id)
     retrieval = app.state.retriever.retrieve(
         RetrievalQuery(
             user_id=user_id,
             mode='lecture',
             lesson_id=payload.lesson_id,
+            lesson_source_path=lesson.md_file_path,
             message=payload.message,
             top_k=app.state.rag_top_k,
         )
     )
+    grounded_message = _compose_grounded_message(payload.message, retrieval)
 
     reply, is_fallback, reason = call_with_fallback(
         fn=lambda: app.state.llm_adapter.lecture_reply(
             lesson_id=payload.lesson_id,
-            message=payload.message,
+            message=grounded_message,
             message_id=payload.message_id,
         ),
         timeout_seconds=app.state.llm_policy.timeout_seconds,
@@ -703,20 +958,32 @@ def chat_consultant(payload: ConsultantRequest, access_token: str | None = Cooki
     if not ok:
         raise HTTPException(status_code=403, detail=err)
 
+    opened_lessons = db.execute(
+        select(Lesson.md_file_path)
+        .join(UserLessonProgress, UserLessonProgress.lesson_id == Lesson.id)
+        .where(
+            UserLessonProgress.user_id == user_id,
+            UserLessonProgress.status != 'locked',
+            Lesson.is_published == True,
+        )
+    ).scalars().all()
+
     session = create_ai_session(db, user_id=user_id, mode='consultant', lesson_id=None)
     retrieval = app.state.retriever.retrieve(
         RetrievalQuery(
             user_id=user_id,
             mode='consultant',
             lesson_id=None,
+            allowed_source_paths=list(opened_lessons),
             message=payload.message,
             top_k=app.state.rag_top_k,
         )
     )
+    grounded_message = _compose_grounded_message(payload.message, retrieval)
 
     reply, is_fallback, reason = call_with_fallback(
         fn=lambda: app.state.llm_adapter.consultant_reply(
-            message=payload.message,
+            message=grounded_message,
             message_id=payload.message_id,
         ),
         timeout_seconds=app.state.llm_policy.timeout_seconds,

@@ -1,3 +1,15 @@
-#root {
+/* LearnCore App Styles */
+
+.App {
   min-height: 100vh;
+  background: #0d0d0d;
+}
+
+/* Remove any default margins/paddings that might interfere */
+.App-header {
+  display: none;
+}
+
+.App-link {
+  display: none;
 }

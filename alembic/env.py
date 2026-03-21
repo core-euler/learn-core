@@ -14,6 +14,7 @@ from backend.app import course_entities as _course_entities  # noqa: F401
 from backend.app import ai_entities as _ai_entities  # noqa: F401
 from backend.app import usage_entities as _usage_entities  # noqa: F401
 from backend.app import rate_limit_entities as _rate_limit_entities  # noqa: F401
+from backend.app import rag_entities as _rag_entities  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

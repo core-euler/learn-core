@@ -38,9 +38,13 @@ npm run dev
 ## Docker local stack
 ```bash
 docker compose up -d --build
-docker compose ps  # db/backend should become healthy
+docker compose ps  # db/backend/frontend (+telegram-bot) should start
 curl -fsS http://localhost:8000/healthz
 ```
+
+Env policy:
+- `db`, `backend`, `telegram-bot` read variables from root `.env`.
+- `frontend` uses `frontend/.env.docker` (separate from root `.env`).
 
 Local/staging operational steps: `docs/runbook.md`.
 
@@ -54,6 +58,43 @@ alembic history
 ```
 
 For clean PostgreSQL bootstrap, see `docs/runbook.md`.
+
+## LLM provider configuration
+Default runtime uses deterministic local adapter (`LLM_PROVIDER=default`).
+
+To switch to CometAPI:
+```bash
+LLM_PROVIDER=cometapi
+COMETAPI_API_KEY=...
+COMETAPI_BASE_URL=https://api.cometapi.com
+COMETAPI_CHAT_MODEL=gpt-5.2
+COMETAPI_EXAM_MODEL=gpt-5.2
+COMETAPI_EMBED_MODEL=text-embedding-3-small
+```
+
+RAG indexing behavior:
+- Startup computes a curriculum signature (`content/index.json` + markdown content + chunk/embed settings).
+- Re-index/embedding generation runs only when the signature changes.
+- Otherwise backend reuses cached vectors/chunks from DB tables `rag_chunks` and `rag_index_state`.
+
+Course catalog behavior:
+- `backend/content/index.json` is the source of truth for course modules/lessons.
+- On backend startup, catalog is synchronized into DB (`modules`, `lessons`) by stable slugs.
+- User progress rows are backfilled for existing users when new lessons/modules appear.
+
+## Telegram auth bot (aiogram)
+Simple Telegram bot for auth link generation is available at:
+`backend/bot/telegram_auth_bot.py`
+
+Install and run manually:
+```bash
+pip install -r backend/requirements-bot.txt
+export TELEGRAM_BOT_TOKEN=...
+export TELEGRAM_AUTH_FRONTEND_URL=http://localhost:3000
+python backend/bot/telegram_auth_bot.py
+```
+
+When using docker compose, bot runs as `telegram-bot` service automatically.
 
 ## Release status
 MVP-ready for closed rollout по зафиксированным quality gates (см. `docs/release-readiness.md`).

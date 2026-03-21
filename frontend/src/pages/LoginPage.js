@@ -54,7 +54,7 @@ const LoginPage = () => {
 
           <button
             onClick={handleTelegramLogin}
-            className="w-full bg-[#0088cc] hover:bg-[#0077b3] text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 mb-4"
+            className="w-full bg-[#0088cc] hover:bg-[#0077b3] text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
             data-testid="telegram-login-button"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -63,6 +63,12 @@ const LoginPage = () => {
             Войти через Telegram
           </button>
 
+          <p className="text-center text-xs text-[#5a5a5a] mt-4">
+            Вход только для участников курса
+          </p>
+
+          {/* EMAIL/PASSWORD LOGIN - COMMENTED OUT, TELEGRAM ONLY */}
+          {/*
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-[#222222]"></div>
@@ -115,6 +121,7 @@ const LoginPage = () => {
               {loading ? 'Вход...' : 'Войти'}
             </button>
           </form>
+          */}
         </div>
       </div>
     </div>

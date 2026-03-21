@@ -86,15 +86,51 @@ AI-оркестрация backend работает через внутренни
 Обязательные поля контракта:
 - `version`: версия индекса (строка, semver/date-based допустимы).
 - `modules[]`: упорядоченный список модулей.
-  - `slug`, `title`, `order_index`.
+  - `slug`, `title`, `order_index`, `full_chapter`.
   - `lessons[]`: упорядоченный список уроков модуля.
-    - `slug`, `title`, `order_index`, `md_file_path`.
+    - `slug`, `title`, `order_index`, `md_file_path`, `type`, `difficulty`, `prerequisites[]`, `tags[]`.
+
+Канонический пример:
+```json
+{
+  "version": "2026-03-21",
+  "modules": [
+    {
+      "slug": "01_foundations",
+      "title": "Фундамент: мышление и архитектура LLM-агентов",
+      "order_index": 1,
+      "full_chapter": "01_foundations/00_full_chapter.md",
+      "lessons": [
+        {
+          "slug": "01_foundations__lesson_01",
+          "title": "Agent Loop — замкнутый цикл агента",
+          "order_index": 1,
+          "md_file_path": "01_foundations/lesson_01_agent_loop.md",
+          "type": "theory",
+          "difficulty": "beginner",
+          "prerequisites": [],
+          "tags": ["agent-loop", "orchestrator", "verification"]
+        }
+      ]
+    }
+  ]
+}
+```
 
 Инварианты:
 - В индексе минимум один модуль и минимум один урок в каждом модуле.
 - `order_index` уникален в пределах соответствующего уровня (модули, уроки в модуле).
 - `slug` уникален в пределах соответствующего уровня (модули, уроки в модуле).
-- `md_file_path` указывает на существующий markdown-файл под префиксом `content/`.
+- `md_file_path` и `full_chapter` указывают на существующие markdown-файлы под `backend/content/`.
+  - Поддерживаются записи как с префиксом `content/`, так и без него (`m1/l1.md`).
+- `prerequisites[]` содержит только существующие lesson slug; неоднозначные ссылки запрещены.
+
+Смысл расширенных полей:
+- `type`: режим подачи материала (теория/практика) для AI-подсказок.
+- `difficulty`: уровень сложности для адаптации глубины ответа.
+- `prerequisites`: контроль прогрессии и блокировок.
+- `tags`: доменные ключи для retrieval-фильтрации и ранжирования.
+- `full_chapter`: fallback-материал для сквозного чтения модуля.
 
 Валидация выполняется fail-fast (на старте backend при включённом флаге) и может запускаться отдельной командой в CI.
 

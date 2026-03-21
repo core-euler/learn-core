@@ -35,6 +35,7 @@
   - `backend/content/index.json` используется как source of truth для `modules/lessons`;
   - на старте backend выполняется upsert-синхронизация курса в БД по `slug`;
   - при изменениях курса для существующих пользователей автоматически добавляются отсутствующие записи прогресса.
+  - поддерживается расширенный lesson metadata формат: `type`, `difficulty`, `prerequisites`, `tags` + `full_chapter` на уровне модуля.
 
 ## Запуск тестов
 ```bash

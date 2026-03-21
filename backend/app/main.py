@@ -47,7 +47,7 @@ from .retrieval import (
 from .env import is_test_mode, cookie_secure, cookie_samesite
 from .telegram_auth import validate_telegram_payload, resolve_bot_id
 from .config import settings
-from .content_index import validate_default_content_index, default_index_path
+from .content_index import validate_default_content_index, default_index_path, resolve_content_path
 import os
 import json
 
@@ -644,12 +644,14 @@ def get_lesson_content(lesson_id: str, access_token: str | None = Cookie(default
     if not lp or lp.status == 'locked':
         raise HTTPException(status_code=403, detail='lesson_locked')
 
-    path = os.path.join(os.path.dirname(__file__), '..', l.md_file_path)
-    path = os.path.abspath(path)
-    if not os.path.exists(path):
+    repo_root = Path(__file__).resolve().parent.parent
+    try:
+        path = resolve_content_path(repo_root, l.md_file_path)
+    except ValueError:
         raise HTTPException(status_code=404, detail='content_not_found')
-    with open(path, 'r', encoding='utf-8') as f:
-        content = f.read()
+    if not path.exists():
+        raise HTTPException(status_code=404, detail='content_not_found')
+    content = path.read_text(encoding='utf-8')
     return LessonContentOut(lesson_id=l.id, title=l.title, content=content)
 
 

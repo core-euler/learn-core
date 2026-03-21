@@ -105,3 +105,7 @@ Connect the current frontend (from `emergent_client`) with the real backend (fro
   - backend startup now syncs `modules/lessons` from `backend/content/index.json` by stable slugs
   - existing users get missing progress rows auto-backfilled when catalog expands
 - 2026-03-21: Backend regression gate after catalog sync changes passed (`56 passed` for `backend/tests`).
+- 2026-03-21: Course index contract expanded:
+  - documented canonical extended schema (`full_chapter`, `type`, `difficulty`, `prerequisites`, `tags`)
+  - backend validator updated to enforce new metadata and prerequisite references
+- 2026-03-21: Backend regression gate after course-format expansion passed (`57 passed` for `backend/tests`).

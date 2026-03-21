@@ -1,35 +1,49 @@
 {
-  "version": "2026-02-23",
+  "version": "2026-03-21",
   "modules": [
     {
-      "slug": "m1",
-      "title": "M1",
+      "slug": "01_foundations",
+      "title": "Фундамент: мышление и архитектура LLM-агентов",
       "order_index": 1,
+      "full_chapter": "m1/00_full_chapter.md",
       "lessons": [
         {
-          "slug": "l1",
+          "slug": "01_foundations__lesson_01",
           "title": "L1",
           "order_index": 1,
-          "md_file_path": "content/m1/l1.md"
+          "md_file_path": "m1/l1.md",
+          "type": "theory",
+          "difficulty": "beginner",
+          "prerequisites": [],
+          "tags": ["agent-loop", "orchestrator"]
         },
         {
-          "slug": "l2",
+          "slug": "01_foundations__lesson_02",
           "title": "L2",
           "order_index": 2,
-          "md_file_path": "content/m1/l2.md"
+          "md_file_path": "m1/l2.md",
+          "type": "practice",
+          "difficulty": "beginner",
+          "prerequisites": ["01_foundations__lesson_01"],
+          "tags": ["verification", "prompt-design"]
         }
       ]
     },
     {
-      "slug": "m2",
-      "title": "M2",
+      "slug": "02_operations",
+      "title": "Операции: надёжность и эксплуатация",
       "order_index": 2,
+      "full_chapter": "m2/00_full_chapter.md",
       "lessons": [
         {
-          "slug": "l1",
+          "slug": "02_operations__lesson_01",
           "title": "L3",
           "order_index": 1,
-          "md_file_path": "content/m2/l1.md"
+          "md_file_path": "m2/l1.md",
+          "type": "theory",
+          "difficulty": "intermediate",
+          "prerequisites": ["01_foundations__lesson_02"],
+          "tags": ["monitoring", "sre", "rag"]
         }
       ]
     }

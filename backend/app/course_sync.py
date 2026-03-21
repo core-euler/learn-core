@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .content_index import load_content_index
+from .content_index import load_content_index, resolve_content_path
 from .course_entities import Lesson, Module
 from .progress_service import ensure_progress_for_all_users
 
@@ -98,7 +98,7 @@ def sync_course_catalog_from_index(
 
         for lesson_item in sorted(module_item.lessons, key=lambda row: row.order_index):
             # Ensure markdown file listed in index exists in repository.
-            if not (repo_root / lesson_item.md_file_path).exists():
+            if not resolve_content_path(repo_root, lesson_item.md_file_path).exists():
                 raise ValueError(f"course_sync_markdown_missing:{lesson_item.md_file_path}")
 
             lesson_row = lessons_by_slug.get(lesson_item.slug)

@@ -22,12 +22,17 @@ def _valid_payload() -> dict:
                 "slug": "m1",
                 "title": "M1",
                 "order_index": 1,
+                "full_chapter": "m1/00_full_chapter.md",
                 "lessons": [
                     {
-                        "slug": "l1",
+                        "slug": "m1__l1",
                         "title": "L1",
                         "order_index": 1,
-                        "md_file_path": "content/m1/l1.md",
+                        "md_file_path": "m1/l1.md",
+                        "type": "theory",
+                        "difficulty": "beginner",
+                        "prerequisites": [],
+                        "tags": ["intro"],
                     }
                 ],
             }
@@ -40,6 +45,8 @@ def test_default_content_index_is_valid():
 
 
 def test_content_index_fails_when_lesson_file_missing(tmp_path: Path):
+    (tmp_path / "content" / "m1").mkdir(parents=True)
+    (tmp_path / "content" / "m1" / "00_full_chapter.md").write_text("# chapter", encoding="utf-8")
     index_path = _write_index(tmp_path, _valid_payload())
 
     with pytest.raises(ValueError, match="content_index_md_missing"):
@@ -49,6 +56,8 @@ def test_content_index_fails_when_lesson_file_missing(tmp_path: Path):
 def test_content_index_fails_when_module_without_lessons(tmp_path: Path):
     payload = _valid_payload()
     payload["modules"][0]["lessons"] = []
+    (tmp_path / "content" / "m1").mkdir(parents=True)
+    (tmp_path / "content" / "m1" / "00_full_chapter.md").write_text("# chapter", encoding="utf-8")
 
     index_path = _write_index(tmp_path, payload)
     with pytest.raises(ValueError, match="content_index_module_without_lessons"):
@@ -60,7 +69,20 @@ def test_content_index_fails_when_contract_field_missing(tmp_path: Path):
     del payload["version"]
     (tmp_path / "content" / "m1").mkdir(parents=True)
     (tmp_path / "content" / "m1" / "l1.md").write_text("# ok", encoding="utf-8")
+    (tmp_path / "content" / "m1" / "00_full_chapter.md").write_text("# chapter", encoding="utf-8")
 
     index_path = _write_index(tmp_path, payload)
     with pytest.raises(ValueError, match="content_index_schema_error"):
+        validate_content_index(index_path, repo_root=tmp_path)
+
+
+def test_content_index_fails_when_prerequisite_unknown(tmp_path: Path):
+    payload = _valid_payload()
+    payload["modules"][0]["lessons"][0]["prerequisites"] = ["missing_lesson_slug"]
+    (tmp_path / "content" / "m1").mkdir(parents=True)
+    (tmp_path / "content" / "m1" / "l1.md").write_text("# ok", encoding="utf-8")
+    (tmp_path / "content" / "m1" / "00_full_chapter.md").write_text("# chapter", encoding="utf-8")
+
+    index_path = _write_index(tmp_path, payload)
+    with pytest.raises(ValueError, match="content_index_unknown_prerequisite"):
         validate_content_index(index_path, repo_root=tmp_path)

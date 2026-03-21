@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Callable, Sequence
 import math
 
-from .content_index import ContentIndex, load_content_index
+from .content_index import ContentIndex, load_content_index, resolve_content_path
 
 
 @dataclass(frozen=True)
@@ -282,7 +282,7 @@ def compute_curriculum_content_signature(
             hasher.update(source_path.encode("utf-8"))
             hasher.update(b"\0")
 
-            md_abs = (repo_root / source_path).resolve()
+            md_abs = resolve_content_path(repo_root, source_path)
             if not md_abs.exists():
                 hasher.update(b"__MISSING__")
                 hasher.update(b"\0")
@@ -306,7 +306,7 @@ def load_curriculum_chunks(
     for module in content_index.modules:
         for lesson in module.lessons:
             source_path = lesson.md_file_path
-            md_abs = (repo_root / source_path).resolve()
+            md_abs = resolve_content_path(repo_root, source_path)
             if not md_abs.exists():
                 continue
             text = md_abs.read_text(encoding="utf-8")
